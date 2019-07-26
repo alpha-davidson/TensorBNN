@@ -5,34 +5,48 @@ This package contains code which can be used to create full Bayesian Neural Netw
 All python code written here is intended to be used in Python3. The code is dependent upon the packages numpy, tensorflow, tensorflow-probability, and scipy.
 
 Numpy and scipy can be installed through the command:
+
 ```
 pip3 install numpy scipy
 ```
 
 The tensorflow version must be 2.0. Using a 1.x version will not work. It is also highly recomended that this code be run on a gpu due to its high computational complexit. Tensorflow 2.0 for the gpu can be installed with the command:
+
 ```
 pip3 install tensorflow-gpu==2.0.0-beta1
 ```
 
 In order to be compatible with tensorflow 2.0, the nightly version of tensorflow-probability must be installed. This is done with the following command:
-'''
+
+```
 pip3 install tfp-nightly
-'''
+```
 
 ## Usage
-Through the use of this package it is possible to easily make Bayesian Neural Networks for regression and binary classification learning problems. The folder `Examples` contains an excellent example of a regression problem and a binary classification problem. More generally, in order to use this code you must import network, Dense Layer, and an activation such as Relu. This can be done as follows:
+Through the use of this package it is possible to easily make Bayesian Neural Networks for regression and binary classification learning problems. The folder `Examples` contains an excellent example of a regression problem and a binary classification problem. These examples make extensive use of command line options. To use these you will need to install `click` which can be done with the command:
+
+```
+pip3 install click
+```
+
+More generally, in order to use this code you must import network, Dense Layer, and an activation such as Relu. This can be done as follows:
+
 ```
 from layer import DenseLayer
 from network import network
 from activationFunctions import Relu
 ```
+
 Next, it is highly convenient to turn off the deprecation warnings. These are all from tensorflow, tensorflow-probability, and numpy intereacting with tensorflow, so it isn't something easily fixed and there are a lot of warnings. These are turned off with:
+
 ```
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 ```
+
 The other important setup task is determining whether or not to seed the random number generator before training. Please note that if you are using a gpu then there will always be some randomness which cannot be removed. To set all cpu random numbers use these lines of code:
+
 ```
 import os
 
@@ -45,10 +59,13 @@ np.random.seed(42)
 rn.seed(12345)
 tf.random.set_seed(3)
 ```
+
 Moving on to the actual use of this code, start with the declaration of a network object:
+
 ```
 neuralNet = network.network(dtype, inputDims, trainX, trainY, validationX, validationY, mean, sd)
 ```
+
 The paramaters are described as follows:
 * dtype: data type for Tensors
 * inputDims: dimension of input vector
@@ -60,11 +77,14 @@ The paramaters are described as follows:
 * sd: standard deviation used to scale trainY and validateY
 
 Next, add all of the desired layers and activation functions as follows:
+
 ```
 neuralNet.add(DenseLayer(inputDims, outputDims, seed=seed, dtype=tf.float32))
 neuralNet.add(Relu())
 ```
+
 For added control, especially when using pre-trained networks it is possible to feed pretrained weights, biases, and values for the activation functions. This can be done as follows:
+
 ```
 neuralNet.add(DenseLayer(inputDims,outputDims, weights=weights, biases=biases, seed=seed, dtype=dtype))
 neuralNet.add(SquarePrelu(width, alpha=alpha**(0.5), activation=activation, dtype=dtype))
@@ -73,6 +93,7 @@ neuralNet.add(SquarePrelu(width, alpha=alpha**(0.5), activation=activation, dtyp
 The paramater inputDims is the output shape of the layer before, and the width is the ouput shape of the layers itself. The seed is used for seeding the random number generator. Currently, only ReLU is supported for easy predictions off of saved networks. The other activation functions can be used, but they will require more custom code to predict from saved networks.
 
 Next, the Markov Chain Monte Carlo algorithm must be initialized. This can be done as follows:
+
 ```
 neuralNet.setupMCMC(self, stepSize, stepMin, stepMax, stepNum, leapfrog, leapMin,
                     leapMax, leapStep, hyperStepSize, hyperLeapfrog, burnin,
@@ -103,6 +124,7 @@ The last thing to do is actually tell the model to start learning this is done w
 network.train(epochs, startSampling, samplingStep, scaleExp=False, folderName=None, 
               networksPerFile=1000, returnPredictions=False, regression=True):
 ```
+
 The arguments have the following meanings:
 
 * Epochs: Number of training cycles
@@ -117,6 +139,7 @@ The arguments have the following meanings:
               binary classification use False
 
 Once the network has trained, which may take a while, the saved networks can be loaded and then used to make predictions using the following code:
+
 ```
 import os
 
@@ -126,4 +149,5 @@ numNetworks, numMatrices, matrices=loadNetworks(filePath)
 
 initialResults = predict(inputData, numNetworks, numMatrices, matrices)
 ```
+
 The variable filePath is the directory from which the networks are being loaded, and inputData is the data for which predictions should be made.
