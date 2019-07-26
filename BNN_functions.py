@@ -253,7 +253,7 @@ def trainBasicRegression(
     model.add(
         tf.keras.layers.Dense(
             width,
-            kernel_initializer='glorot_uniform',
+            kernel_initializer="glorot_uniform",
             input_shape=(
                 inputDims,
             )))
@@ -263,23 +263,23 @@ def trainBasicRegression(
         model.add(
             tf.keras.layers.Dense(
                 width,
-                kernel_initializer='glorot_uniform'))
+                kernel_initializer="glorot_uniform"))
         model.add(tf.keras.layers.LeakyReLU(alpha=alpha))
 
     model.add(
         tf.keras.layers.Dense(
             outputDims,
-            kernel_initializer='glorot_uniform'))
+            kernel_initializer="glorot_uniform"))
 
     callback = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', patience=patience, restore_best_weights=True)
+        monitor="val_loss", patience=patience, restore_best_weights=True)
 
     # Train with decreasing learning rate
     for x in range(cycles):
         model.compile(optimizer=tf.keras.optimizers.Adam(0.01 * (10**(-x)),
                       amsgrad=True),
-                      loss='mean_squared_error',
-                      metrics=['mean_absolute_error', 'mean_squared_error'])
+                      loss="mean_squared_error",
+                      metrics=["mean_absolute_error", "mean_squared_error"])
         model.summary()
 
         model.fit(
@@ -358,7 +358,7 @@ def trainBasicClassification(
     model.add(
         tf.keras.layers.Dense(
             width,
-            kernel_initializer='glorot_uniform',
+            kernel_initializer="glorot_uniform",
             input_shape=(
                 inputDims,
             )))
@@ -368,24 +368,24 @@ def trainBasicClassification(
         model.add(
             tf.keras.layers.Dense(
                 width,
-                kernel_initializer='glorot_uniform'))
+                kernel_initializer="glorot_uniform"))
         model.add(tf.keras.layers.LeakyReLU(alpha=alpha))
 
     model.add(
         tf.keras.layers.Dense(
             outputDims,
-            kernel_initializer='glorot_uniform',
-            activation='sigmoid'))
+            kernel_initializer="glorot_uniform",
+            activation="sigmoid"))
 
     callback = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', patience=patience, restore_best_weights=True)
+        monitor="val_loss", patience=patience, restore_best_weights=True)
 
     for x in range(cycles):
 
         model.compile(optimizer=tf.keras.optimizers.Adam(0.001 * (10**(-x)),
                       amsgrad=True),
                       loss=tf.keras.losses.BinaryCrossentropy(),
-                      metrics=['accuracy', 'mse'])
+                      metrics=["accuracy", "mse"])
         model.summary()
         model.fit(
             trainIn,
