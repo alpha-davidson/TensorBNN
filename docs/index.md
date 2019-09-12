@@ -151,3 +151,5 @@ initialResults = predict(inputData, numNetworks, numMatrices, matrices)
 ```
 
 The variable filePath is the directory from which the networks are being loaded, and inputData is the data for which predictions should be made.
+
+[a link](why-use-TensorBNN.md)
