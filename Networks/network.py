@@ -43,6 +43,8 @@ class network(object):
         self.mean = mean
         self.sd = sd
 
+        print(len(trainX), inputDims)
+        print(trainX.shape)
         self.trainX = tf.reshape(
             tf.constant(
                 trainX, dtype=self.dtype), [
@@ -61,7 +63,8 @@ class network(object):
         self.layers = []  # List of all the layers
 
     @tf.function
-    def make_response_likelihood_regression(self, *argv, realVals=None):
+    def make_response_likelihood_regression(self, *argv, realVals=None,
+                                            sd=None):
         """Make a prediction and predict its probability from a multivariate
         normal distribution
 
@@ -69,21 +72,27 @@ class network(object):
             * argv: an undetermined number of tensors containg the weights
             and biases
             * realVals: the actual values for the predicted quantities
+            * sd: standard deviation for output distribution, uses
+            current hyper parameter value if nothing is given
         Returns:
             * result: the log probabilities of the real vals given the
             predicted values
         """
 
+        if(sd is None):
+            sd = self.hyperStates[-1]
+
         current = self.predict(True, argv[0])
         current = tf.transpose(current)
-        sigma = tf.ones_like(current) * 0.1
+        sigma = tf.ones_like(current) * sd
         realVals = tf.reshape(realVals, current.shape)
         result = multivariateLogProb(sigma, current, realVals, self.dtype)
 
         return(result)
 
     @tf.function
-    def make_response_likelihood_classification(self, *argv, realVals=None):
+    def make_response_likelihood_classification(self, *argv, realVals=None,
+                                                sd=None):
         """Make a prediction and predict its probability from a Bernoulli
            normal distribution
 
@@ -91,11 +100,11 @@ class network(object):
             * argv: an undetermined number of tensors containg the weights
                     and biases
             * realVals: the actual values for the predicted quantities
+            * sd: dummy argument for compatability
         Returns:
             * result: the log probabilities of the real vals given the
                       predicted values
         """
-
         current = self.predict(True, argv[0])
         current = tf.cast(
             tf.clip_by_value(
@@ -161,20 +170,24 @@ class network(object):
         return(predictions, squaredError, percentError, accuracy)
 
     @tf.function
-    def calculateProbs(self, *argv):
+    def calculateProbs(self, *argv, sd=None):
         """Calculates the log probability of the current network values
         as well as the log probability of their prediction.
 
         Arguments:
             * argv: an undetermined number of tensors containg the weights
             and biases.
+            * sd: standard deviation for output distribution, uses current
+            hyper value if none is given
         Returns:
             * prob: log probability of network values and network prediction
         """
+        if(len(argv) != len(self.states)):
+            argv = argv[0]
 
         prob = tf.reduce_sum(
             self.make_response_likelihood(
-                argv, realVals=self.trainY))
+                argv, realVals=self.trainY, sd=sd))
 
         # probability of the network parameters
         index = 0
@@ -209,6 +222,12 @@ class network(object):
                     self.states[index:index + numTensors])
                 indexh += numHyperTensors
                 index += numTensors
+
+        if(self.regression):
+            print("prob1", prob)
+            prob += self.calculateProbs(self.states, sd=argv[-1])
+            print("prob2", prob)
+
         return(prob)
 
     def predict(self, train, *argv):
@@ -250,8 +269,8 @@ class network(object):
         """Adds a new layer to the network
         Arguments:
             * layer: the layer to be added
-            * weigths: matrix to initialize weights
-            * biases: matrix to initialize biases
+            * parameters: list containing weight, bias, and acitvation
+            matrices
         """
         self.layers.append(layer)
         if(layer.numTensors > 0):
@@ -331,7 +350,7 @@ class network(object):
             num_leapfrog_steps=hyperLeapfrog,
             step_size=self.hyper_step_size,
             step_size_update_fn=tfp.mcmc.make_simple_step_size_update_policy(
-                num_adaptation_steps=int(burnin * 0.8),
+                num_adaptation_steps=None, int(burnin * 0.8),
                 decrement_multiplier=0.01),
             state_gradients_are_stopped=True)
 
@@ -448,11 +467,13 @@ class network(object):
         """
         # Create response likelihood
 
+        self.regression = regression
         startSampling = self.burnin
 
-        if regression:
+        if self.regression:
             self.make_response_likelihood = \
                 self.make_response_likelihood_regression
+            self.hyperStates.append(tf.cast(0.1, self.dtype))
         else:
             self.make_response_likelihood = \
                 self.make_response_likelihood_classification
@@ -566,6 +587,9 @@ class network(object):
                 if(filePath is not None):
                     for n in range(len(files)):
                         np.savetxt(files[n], self.states[n])
+            if(self.regression):
+                print("Loss Standard Deviation",
+                      self.hyperStates[-1].numpy()*1)
             print("Time elapsed:", time.time() - startTime)
 
         for file in files:
