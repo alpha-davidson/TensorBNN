@@ -1,2 +1,6 @@
 site_name: TensorBNN Documentation
 theme: jekyll-theme-dinky
+
+nav:
+- Home: index.md
+- Why use TensorBNN: why-use-TensorBNN.md
