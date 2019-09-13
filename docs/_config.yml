@@ -1,3 +1,9 @@
 theme: jekyll-theme-dinky
-plugins:
-  - jekyll-sitemap
+defaults:
+# _docs
+- scope:
+    path: ""
+    type: docs
+  values:
+    sidebar:
+      nav: "docs"
