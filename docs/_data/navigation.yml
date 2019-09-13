@@ -1,0 +1,10 @@
+docs:
+  - title: Home
+    url: /docs/index.md
+
+  - title: Setup
+    url: /docs/Setup.md
+        
+  - title: Usage
+    url: /docs/usage.md
+    
