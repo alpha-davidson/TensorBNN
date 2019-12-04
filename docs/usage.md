@@ -1,3 +1,8 @@
+---
+layout: default
+title: Usage
+---
+
 # Usage
 
 Through the use of this package it is possible to easily make Bayesian Neural Networks for regression and binary classification learning problems. The folder `Examples` contains an excellent example of a regression problem and a binary classification problem. These examples make extensive use of command line options. To use these you will need to install `click` which can be done with the command:
