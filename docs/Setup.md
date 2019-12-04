@@ -1,3 +1,8 @@
+---
+layout: default
+title: Setup
+---
+
 # Setup
 All python code written here is intended to be used in Python3. The code is dependent upon the packages numpy, tensorflow, tensorflow-probability, and scipy.
 
