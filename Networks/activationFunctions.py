@@ -1,7 +1,6 @@
 import numpy as np
 
 import tensorflow as tf
-import tensorflow.nn as nn
 import tensorflow_probability as tfp
 
 from tensorflow.python.ops import gen_nn_ops
@@ -89,7 +88,7 @@ class Leaky_relu(object):
         self.parameters = [alpha]
 
     def predict(self, inputTensor, _):
-        result = nn.leaky_relu(inputTensor, self.parameters[0])
+        result = tf.nn.leaky_relu(inputTensor, self.parameters[0])
         return(result)
 
     def calculateProbs(self, *args):
