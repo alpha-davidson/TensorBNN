@@ -350,7 +350,7 @@ class network(object):
             num_leapfrog_steps=hyperLeapfrog,
             step_size=self.hyper_step_size,
             step_size_update_fn=tfp.mcmc.make_simple_step_size_update_policy(
-                num_adaptation_steps=None, int(burnin * 0.8),
+                num_adaptation_steps= int(burnin * 0.8),
                 decrement_multiplier=0.01),
             state_gradients_are_stopped=True)
 
