@@ -1,10 +1,18 @@
 # TensorBNN
-This package contains code which can be used to create full Bayesian Neural Networks using Hamiltonian Monte Carlo sampling as proposed by Radford Neal in his thesis "Bayesian Learning for Neural Networks" along with some added features. The package is written in python and uses the packages `Tensorflow` and `Tensorflow-Probability` as the framework for the implementation. 
+This package contains code which can be used to train Bayesian Neural Networks using Hamiltonian Monte Carlo sampling as proposed by Radford Neal in his thesis "Bayesian Learning for Neural Networks" along with added features. The package is written in python3 and uses the packages `Tensorflow` and `Tensorflow-Probability` as the framework for the implementation. 
 
 ## Dependencies
-All python code written here is intended to be used in Python3. The code is dependent upon the packages numpy, tensorflow, tensorflow-probability, and scipy.
+All python code written here is in python3. The code is dependent upon the packages `numpy`, `tensorflow`, `tensorflow-probability`, and `scipy`.
 
-Numpy and scipy can be installed through the command:
+The package, along with its dependencies, can be installed via
+
+```
+pip install tensorBNN
+```
+
+Alternatively, you can download from source:
+
+`numpy` and `scipy` can be installed through the command:
 
 ```
 pip3 install numpy scipy
