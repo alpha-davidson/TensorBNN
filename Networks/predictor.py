@@ -8,6 +8,12 @@ import tensorflow as tf
 
 class predictor(object):
     def __init__(self, directoryPath, dtype):
+        """Initializes the object
+
+        Arguments:
+            * directoryPath: file path to network folder
+            * dtype: data type used for predictions
+        """
         self.layerDict = {"relu": Relu, "sigmoid": Sigmoid, "tanh": Tanh,
                           "elu": Elu, "softmax": Softmax,
                           "leakyrelu": Leaky_relu, "prelu": Prelu,
@@ -19,13 +25,7 @@ class predictor(object):
         self.loadArchitecture()
 
     def loadNetworks(self):
-        """Loads saved networks.
-
-        Returns:
-            * numNetworks: Total number of networks
-            * numMatrices: Number of matrices in the network
-            * matrices: A list containing all the extracted matrices
-        """
+        """Loads saved networks. """
 
         summary = []
         with open(self.directoryPath + "summary.txt", "r") as file:
@@ -86,9 +86,7 @@ class predictor(object):
         Arguments:
             * inputMatrix: The input data
         Returns:
-            * numNetworks: Number of networks used
-            * numMatrices: Number of matrices in the network
-            * matrices: List with all networks used
+            * initialResults: List with all predictions
         """
 
         inputVal = np.transpose(inputMatrix)
@@ -103,6 +101,6 @@ class predictor(object):
                     tensorList.append(self.matrices[matrixIndex+x][m, :, :])
                 matrixIndex += numTensors
                 current = layer.predict(current, tensorList)
-            initialResults[m] = current
+            initialResults[m] = current.numpy()
 
         return(initialResults)
