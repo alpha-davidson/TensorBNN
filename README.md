@@ -4,45 +4,38 @@ This package contains code which can be used to train Bayesian Neural Networks u
 ## Dependencies
 All python code written here is in python3. The code is dependent upon the packages `numpy`, `tensorflow`, `tensorflow-probability`, and `scipy`.
 
-The package, along with its dependencies, can be installed via
+The package, along with `numpy` and `scipy`, can be installed via
 
 ```
 pip install tensorBNN
 ```
 
-Alternatively, you can download from source:
-
-`numpy` and `scipy` can be installed through the command:
+Alternatively, you can download `numpy` and `scipy` from source through the command:
 
 ```
 pip3 install numpy scipy
 ```
-
-The tensorflow version must be 2.0. Using a 1.x version will not work. It is also highly recomended that this code be run on a gpu due to its high computational complexit. Tensorflow 2.0 for the gpu can be installed with the command:
+TensorFlow and TensorFlow-probability must be instaled separately. The TensorFlow version must be 2.0. Using a 1.x version will not work. It is also highly recomended that this code be run on a gpu due to its high computational complexity. TensorFlow 2.0 for the gpu can be installed with the command:
 
 ```
 pip3 install tensorflow-gpu==2.0.0-beta1
 ```
 
-In order to be compatible with tensorflow 2.0, the nightly version of tensorflow-probability must be installed. This is done with the following command:
+In order to be compatible with this version of tensorflow 2.0, tensorflow-probability version 0.8.0 must be installed. This is done with the following command:
 
 ```
-pip3 install tfp-nightly
+pip3 install tensorflow-probability==0.8.0
 ```
+
 
 ## Usage
-Through the use of this package it is possible to easily make Bayesian Neural Networks for regression and binary classification learning problems. The folder `Examples` contains an excellent example of a regression problem and a binary classification problem. These examples make extensive use of command line options. To use these you will need to install `click` which can be done with the command:
+
+In order to use this code you must import network, Dense Layer, and an activation such as Relu. This can be done as follows:
 
 ```
-pip3 install click
-```
-
-More generally, in order to use this code you must import network, Dense Layer, and an activation such as Relu. This can be done as follows:
-
-```
-from layer import DenseLayer
-from network import network
-from activationFunctions import Relu
+from TensorBNN.layer import DenseLayer
+from TensorBNN.network import network
+from TensorBNN.activationFunctions import Relu
 ```
 
 Next, it is highly convenient to turn off the deprecation warnings. These are all from tensorflow, tensorflow-probability, and numpy intereacting with tensorflow, so it isn't something easily fixed and there are a lot of warnings. These are turned off with:
@@ -129,15 +122,16 @@ This code uses the adaptive Hamlitonain Monte Carlo described in "Adaptive Hamil
 The last thing to do is actually tell the model to start learning this is done with the following command:
 
 ```
-network.train(epochs, startSampling, samplingStep, scaleExp=False, folderName=None, 
+network.train(epochs, samplingStep, startSigma=0.1, scaleExp=False, folderName=None, 
               networksPerFile=1000, returnPredictions=False, regression=True):
 ```
 
 The arguments have the following meanings:
 
 * Epochs: Number of training cycles
-* startSampling: Number of epochs before networks start being saved
 * samplingStep: Epochs between sampled networks
+* startSigma: Starting standard deviation for likelihood function
+              for regression models
 * scaleExp: whether the metrics should be scaled via exp
 * folderName: name of folder for saved networks
 * networksPerFile: number of networks saved in a given file
@@ -149,13 +143,11 @@ The arguments have the following meanings:
 Once the network has trained, which may take a while, the saved networks can be loaded and then used to make predictions using the following code:
 
 ```
-import os
+from TensorBNN.predictor import predictor 
 
-from BNN_functions import normalizeData, loadNetworks, predict
+network = predictor(filePath)
 
-numNetworks, numMatrices, matrices=loadNetworks(filePath)
-
-initialResults = predict(inputData, numNetworks, numMatrices, matrices)
+initialResults = network.predict(inputData, dtype)
 ```
 
-The variable filePath is the directory from which the networks are being loaded, and inputData is the data for which predictions should be made.
+The variable filePath is the directory from which the networks are being loaded, inputData is the normalized data for which predictions should be made, and dtype is the data type to be used for predictions. The variable initialResults will be a list of numpy arrays, each numpy array corresponding to the predcitions from a single network in the BNN.
