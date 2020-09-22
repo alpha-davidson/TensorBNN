@@ -119,35 +119,79 @@ The paramaters are described as follows:
 
 This code uses the adaptive Hamlitonain Monte Carlo described in "Adaptive Hamiltonian and Riemann Manifold Monte Carlo Samplers" by Wang, Mohamed, and de Freitas. In accordance with this paper there are a few more paramaters that can be adjusted, though it is recomended that their default values are kept.
 
+After initializaing the HMC, we must declare the likelihood that we want to use as well as any metrics. This can be accomplished through the following code:
+
+```
+# Declare Gaussian Likelihood with sd of 0.1
+likelihood =  GaussianLikelihood(sd = 0.1)
+metricList = [ #Declare metrics
+    SquaredError(mean = 0, sd = 1, scaleExp = False),
+    PercentError(mean = 10, sd = 2, scaleExp = True)]
+```
+
+
 The last thing to do is actually tell the model to start learning this is done with the following command:
 
 ```
-network.train(epochs, samplingStep, startSigma=0.1, scaleExp=False, folderName=None, 
-              networksPerFile=1000, returnPredictions=False, regression=True):
+network.train(
+        epochs, # epochs to train for
+        samplingStep, # increment between network saves
+        likelihood,
+        metricList = metricList,
+        folderName = "Regression", 
+        # Name of folder for saved networks
+        networksPerFile=50)
+        # Number of networks saved per file
 ```
 
 The arguments have the following meanings:
 
 * Epochs: Number of training cycles
 * samplingStep: Epochs between sampled networks
+* likelihood: The likelihood function used to evaluate the prediction 
+              we defined previously
 * startSigma: Starting standard deviation for likelihood function
               for regression models
-* scaleExp: whether the metrics should be scaled via exp
 * folderName: name of folder for saved networks
 * networksPerFile: number of networks saved in a given file
-* returnPredictions: whether to return the prediction from the
-                     network
-* regression: for regression loss and metrics use True, for
-              binary classification use False
 
 Once the network has trained, which may take a while, the saved networks can be loaded and then used to make predictions using the following code:
 
 ```
 from TensorBNN.predictor import predictor 
 
-network = predictor(filePath)
+network = predictor(filePath,
+                    dtype = dtype, 
+                    # data type used by network
+                    customLayerDict={"dense2": Dense2},
+                    # A dense layer with a different 
+                    # hyperprior
+                    likelihood = Likelihood)
+                    # The likelihood function is required to  
+                    # calculate the probabilities for 
+                    # re-weighting
 
-initialResults = network.predict(inputData, dtype)
+initialResults = network.predict(inputData, skip, dtype)
 ```
 
-The variable filePath is the directory from which the networks are being loaded, inputData is the normalized data for which predictions should be made, and dtype is the data type to be used for predictions. The variable initialResults will be a list of numpy arrays, each numpy array corresponding to the predcitions from a single network in the BNN.
+The variable filePath is the directory from which the networks are being loaded, inputData is the normalized data for which predictions should be made, and dtype is the data type to be used for predictions. The customLayerDict is a dictionary holding the names and objects for any user defined layers. Likelihood is the likelihood function used to train the model.
+
+The variable initialResults will be a list of numpy arrays, each numpy array corresponding to the predcitions from a single network in the BNN. The skip variable instructs the predictor to only use every n networks, where n=skip
+
+Additionally, the predictor function allows for the calculation of the correlation between different betworks through:
+
+```
+correlations = network.correlation(dtype)
+```
+
+Finally, the predictor object can calculate new weights for the different networks if they were given new priors. These priors take the form of new Layer objects which must be referenced in an architecture file. The reweighting function call looks like this:
+
+```
+weights = network.reweight(                                            
+                    trainX, # training input
+                    trainY, # training output
+                    skip = 10, # Use every 10 saved networks
+                    architecture = "architecture2.txt")
+                    # New architecture file
+```
+
