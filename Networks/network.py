@@ -5,8 +5,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from Networks.BNN_functions import multivariateLogProb
-from Networks.paramAdapter import paramAdapter
+from TensorBNN.paramAdapter import paramAdapter
 
 tfd = tfp.distributions
 
@@ -24,9 +23,7 @@ class network(object):
             trainX,
             trainY,
             validateX,
-            validateY,
-            mean,
-            sd):
+            validateY):
         """
         Arguments:
             * dtype: data type for Tensors
@@ -40,8 +37,6 @@ class network(object):
         """
         self.dtype = dtype
 
-        self.mean = mean
-        self.sd = sd
 
         print(len(trainX), inputDims)
         print(trainX.shape)
@@ -62,64 +57,8 @@ class network(object):
 
         self.layers = []  # List of all the layers
 
-    @tf.function
-    def make_response_likelihood_regression(self, *argv, realVals=None,
-                                            sd=None):
-        """Make a prediction and predict its probability from a multivariate
-        normal distribution
-
-        Arguments:
-            * argv: an undetermined number of tensors containg the weights
-            and biases
-            * realVals: the actual values for the predicted quantities
-            * sd: standard deviation for output distribution, uses
-            current hyper parameter value if nothing is given
-        Returns:
-            * result: the log probabilities of the real vals given the
-            predicted values
-        """
-
-        if(sd is None):
-            sd = self.hyperStates[-1]
-
-        current = self.predict(True, argv[0])
-        current = tf.transpose(current)
-        sigma = tf.ones_like(current) * sd
-        realVals = tf.reshape(realVals, current.shape)
-        result = multivariateLogProb(sigma, current, realVals, self.dtype)
-
-        return(result)
-
-    @tf.function
-    def make_response_likelihood_classification(self, *argv, realVals=None,
-                                                sd=None):
-        """Make a prediction and predict its probability from a Bernoulli
-           normal distribution
-
-        Arguments:
-            * argv: an undetermined number of tensors containg the weights
-                    and biases
-            * realVals: the actual values for the predicted quantities
-            * sd: dummy argument for compatability
-        Returns:
-            * result: the log probabilities of the real vals given the
-                      predicted values
-        """
-        current = self.predict(True, argv[0])
-        current = tf.cast(
-            tf.clip_by_value(
-                current,
-                1e-8,
-                1 - 1e-7),
-            self.dtype)
-        # Prediction distribution
-        dist = tfd.Bernoulli(
-            probs=current)
-        result = dist.log_prob(tf.transpose(realVals))
-        return(result)
-
-    @tf.function
-    def metrics(self, predictions, scaleExp, train, mean=1, sd=1):
+    
+    def metrics(self, trainPredict, trainReal, validatePredict, validateReal):
         """Calculates the average squared error and percent difference of the
         current network
         Arguments:
@@ -137,37 +76,11 @@ class network(object):
             * percentError: the percent error of the predictions from the
                             network
         """
-
-        # Get the correct output values
-        y = self.validateY
-        if(train):
-            y = self.trainY
-
-        squaredError = tf.reduce_mean(
-            input_tensor=tf.math.squared_difference(
-                predictions, tf.transpose(y)))
-
-        scaled = tf.add(tf.multiply(tf.transpose(predictions), sd), mean)
-        real = tf.add(tf.multiply(y, sd), mean)
-
-        if(scaleExp):
-            scaled = tf.exp(scaled)
-            real = tf.exp(real)
-
-        real = tf.reshape(real, scaled.shape)
-
-        percentError = tf.reduce_mean(
-            input_tensor=tf.multiply(
-                tf.abs(
-                    tf.divide(
-                        tf.subtract(
-                            scaled,
-                            real),
-                        real)),
-                100))
-        accuracy = 1 - tf.reduce_mean(tf.abs(real - tf.round(scaled)))
-
-        return(predictions, squaredError, percentError, accuracy)
+        
+        for metric in self.metricList:
+            metric.calculate(trainPredict, validatePredict, trainReal,
+                      validateReal)
+            metric.display()
 
     @tf.function
     def calculateProbs(self, *argv, sd=None):
@@ -186,8 +99,9 @@ class network(object):
             argv = argv[0]
 
         prob = tf.reduce_sum(
-            self.make_response_likelihood(
-                argv, realVals=self.trainY, sd=sd))
+            self.makeResponseLikelihood(
+                argv, predict=self.predict, dtype=self.dtype, 
+                hyperStates=self.hyperStates, realVals=self.trainY, sd=sd))
 
         # probability of the network parameters
         index = 0
@@ -223,7 +137,7 @@ class network(object):
                 indexh += numHyperTensors
                 index += numTensors
 
-        if(self.regression):
+        if(self.likelihood.mainProbsInHypers):
             print("prob1", prob)
             prob += self.calculateProbs(self.states, sd=argv[-1])
             print("prob2", prob)
@@ -375,7 +289,7 @@ class network(object):
                 index += numTensors
 
     def updateKernels(self):
-        """ Updates the main hamiltonian monte carlo kernel.
+        """Updates the main hamiltonian monte carlo kernel.
 
         Has no arguments, returns nothing.
         """
@@ -407,7 +321,7 @@ class network(object):
             input_tensor=tf.exp(tf.minimum(kernel_results.log_accept_ratio,
                                 0.)))
         self.loss = kernel_results.accepted_results.target_log_prob
-        self.loss = -tf.reduce_mean(input_tensor=self.loss)
+        self.loss = -tf.reduce_sum(input_tensor=self.loss)
         for x in range(len(self.states)):
             self.states[x] = self.states[x][0]
 
@@ -446,15 +360,16 @@ class network(object):
             self,
             epochs,
             samplingStep,
+            likelihood,
+            metricList=[],
             scaleExp=False,
             folderName=None,
-            networksPerFile=1000,
-            returnPredictions=False,
-            regression=True):
+            networksPerFile=1000):
         """Trains the network
         Arguements:
             * Epochs: Number of training cycles
             * samplingStep: Epochs between sampled networks
+            * likelihood: Object containing the output likelihood for the BNN
             * scaleExp: whether the metrics should be scaled via exp
             * folderName: name of folder for saved networks
             * networksPerFile: number of networks saved in a given file
@@ -467,16 +382,14 @@ class network(object):
         """
         # Create response likelihood
 
-        self.regression = regression
         startSampling = self.burnin
+        
+        self.likelihood = likelihood
+        self.makeResponseLikelihood = self.likelihood.makeResponseLikelihood
+        self.metricList=metricList
 
-        if self.regression:
-            self.make_response_likelihood = \
-                self.make_response_likelihood_regression
-            self.hyperStates.append(tf.cast(0.1, self.dtype))
-        else:
-            self.make_response_likelihood = \
-                self.make_response_likelihood_classification
+        for val in self.likelihood.hypers:
+            self.hyperStates.append(tf.cast(val, self.dtype))
 
         # Create the folder and files for the networks
         filePath = None
@@ -487,19 +400,11 @@ class network(object):
                 os.mkdir(filePath)
             for n in range(len(self.states)):
                 files.append(
-                    open(
-                        filePath +
-                        "/" +
-                        str(n) +
-                        ".0" +
-                        ".txt",
-                        "wb"))
+                    open(filePath + "/" + str(n) + ".0" + ".txt", "wb"))
+            files.append(open(filePath + "/hypers" + "0" + ".txt", "wb"))
         with open(filePath + "/architecture.txt", "wb") as f:
             for layer in (self.layers):
                 f.write((layer.name+"\n").encode("utf-8"))
-        if(returnPredictions):
-            self.results = []
-        # get a prediction, squared error, and percent error
 
         iter_ = 0
         tf.random.set_seed(50)
@@ -507,14 +412,6 @@ class network(object):
             startTime = time.time()
             # check that the vars are not tensors
             self.stepMCMC()
-
-            trainResult, trainSquaredError, \
-                trainPercentError, trainAccuracy = self.metrics(
-                    self.predict(train=True), scaleExp, True, self.mean,
-                    self.sd)
-            result, squaredError, percentError, accuracy = self.metrics(
-                self.predict(train=False), scaleExp, False, self.mean, self.sd)
-
             iter_ += 1
 
             print()
@@ -532,18 +429,8 @@ class network(object):
                     self.hyper_step_size * 1),
                 "avg_acceptance_ratio:{:.4f}".format(
                     self.hyper_avg_acceptance_ratio * 1))
-            if(regression):
-                print(
-                    "training squared error{: 9.5f}".format(trainSquaredError),
-                    "training percent error{: 7.3f}".format(trainPercentError))
-
-                print(
-                    "validation squared error{: 9.5f}".format(squaredError),
-                    "validation percenterror{: 7.3f}".format(percentError))
-            else:
-                print("training accuracy{: 9.5f}".format(trainAccuracy),
-                      "validation accuracy{: 9.5f}".format(accuracy))
-
+            self.metrics(self.predict(train=True), self.trainY,
+                         self.predict(train=False), self.validateY )
             self.updateKernels()
 
             # Create new files to record network
@@ -554,14 +441,14 @@ class network(object):
                     file.close()
                 temp = []
                 for n in range(len(self.states)):
-                    temp.append(open(filePath +
-                                     "/" +
-                                     str(n) +
-                                     "." +
+                    temp.append(open(filePath + "/" + str(n) + "." +
                                      str(int(iter_ //
                                              (networksPerFile *
                                               samplingStep))) +
                                      ".txt", "wb"))
+                temp.append(open(filePath + "/hypers" + str(int(iter_ //
+                                             (networksPerFile *
+                                              samplingStep))) + ".txt", "wb"))
                 files = temp
 
                 # Update the summary file
@@ -577,22 +464,18 @@ class network(object):
                 if(numNetworks % networksPerFile != 0):
                     numFiles += 1
                 file.write((str(numNetworks) + " " + str(numFiles) +
-                            " " + str(len(self.states))).encode("utf-8"))
+                            " " + str(len(self.states))+"\n").encode("utf-8"))
+                file.write(str(len(self.hyperStates)).encode("utf-8"))
                 file.close()
 
             # Record prediction
             if(iter_ > startSampling and (iter_) % samplingStep == 0):
-                if(returnPredictions):
-                    self.results.append(result_)
                 if(filePath is not None):
-                    for n in range(len(files)):
+                    for n in range(len(files)-1):
                         np.savetxt(files[n], self.states[n])
-            if(self.regression):
-                print("Loss Standard Deviation",
-                      self.hyperStates[-1].numpy()*1)
+                    np.savetxt(files[-1], self.hyperStates)
+            likelihood.display(self.hyperStates)           
             print("Time elapsed:", time.time() - startTime)
 
         for file in files:
             file.close()
-        if(returnPredictions):
-            return(self.results)

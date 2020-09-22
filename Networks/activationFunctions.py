@@ -5,12 +5,13 @@ import tensorflow_probability as tfp
 
 from tensorflow.python.ops import gen_nn_ops
 
-from Networks.BNN_functions import multivariateLogProb
+from TensorBNN.BNN_functions import multivariateLogProb
+from TensorBNN.layer import Layer
 
 tfd = tfp.distributions
 
 
-class Relu(object):
+class Relu(Layer):
     """Relu activation function"""
 
     def __init__(self, inputDims=None, outputDims=None):
@@ -23,7 +24,7 @@ class Relu(object):
         return(result)
 
 
-class Sigmoid(object):
+class Sigmoid(Layer):
     """Sigmoid activation function"""
 
     def __init__(self, inputDims=None, outputDims=None):
@@ -36,7 +37,7 @@ class Sigmoid(object):
         return(result)
 
 
-class Tanh(object):
+class Tanh(Layer):
     """Tanh activation function"""
 
     def __init__(self, inputDims=None, outputDims=None):
@@ -49,7 +50,7 @@ class Tanh(object):
         return(result)
 
 
-class Elu(object):
+class Elu(Layer):
     """Elu activation function"""
 
     def __init__(self, inputDims=None, outputDims=None):
@@ -62,7 +63,7 @@ class Elu(object):
         return(result)
 
 
-class Softmax(object):
+class Softmax(Layer):
     """Softmax activation function"""
 
     def __init__(self, inputDims=None, outputDims=None):
@@ -75,7 +76,7 @@ class Softmax(object):
         return(result)
 
 
-class Leaky_relu(object):
+class Leaky_relu(Layer):
     """Leaky relu activation function"""
 
     def __init__(self, alpha=0.3, inputDims=None, outputDims=None,
@@ -100,7 +101,7 @@ class Leaky_relu(object):
         self.parameters = self.parameters
 
 
-class Prelu(object):
+class Prelu(Layer):
     """Prelu activation function"""
 
     def __init__(
@@ -192,7 +193,6 @@ class Prelu(object):
             and the probability of the new hyper parameters given their priors
         """
 
-        rate = tf.maximum(hypers[0], 0.01)
         slopes = tf.math.abs(slopes[0])
         prob = 0
 
@@ -260,7 +260,7 @@ class Prelu(object):
         self.hypers = [tf.maximum(tf.cast(0.01, self.dtype), hypers[0])]
 
 
-class SquarePrelu(object):
+class SquarePrelu(Layer):
     """Prelu activation function"""
 
     def __init__(
