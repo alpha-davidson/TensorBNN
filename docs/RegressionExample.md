@@ -1,5 +1,5 @@
 # Regression Example
-Here, I will present an example of using `TensorBNN` to train a very basic regression problem. It will also highlight how the BNN represents model uncertainty very well. 
+Here, I will present an example of using `tensorBNN` to train a very basic regression problem. It will also highlight how the BNN represents model uncertainty very well. 
 First, we need to import the nescesary packages. This is done through the commands
 ## Program Setup
 ```
@@ -10,9 +10,9 @@ import numpy as np
 import random as rn
 import tensorflow as tf
 
-from Networks.activationFunctions import Tanh
-from Networks.layer import DenseLayer
-from Networks.network import network
+from tensorBNN.activationFunctions import Tanh
+from tensorBNN.layer import DenseLayer
+from tensorBNN.network import network
 ```
 In order to obtain reproducible results we need to set random seeds. In order to be sure that absolutely everything is seeded, we use the following four lines of code
 ```
@@ -52,11 +52,7 @@ neuralNet = network(
             data[0], # training input data
             data[1], # training output data
             data[2], # validation input data
-            data[3], # validation output data
-            tf.cast( # mean
-                normInfo[0], dtype), 
-            tf.cast( # sd
-                normInfo[1], dtype))
+            data[3], # validation output data)
 ```
 Next, we add the layers. We will be using two hidden layers with 10 perceptrons each and the hyperbolic tangent activation function.
 ```
@@ -76,7 +72,6 @@ for n in range(hidden - 1): # Add more hidden layers
                              width,
                              seed=seed,
                              dtype=dtype))
-    #neuralNet.add(Relu())
     neuralNet.add(Tanh())
     seed += 1000
 
@@ -102,14 +97,21 @@ neuralNet.setupMCMC(
         20, # number of cores
         2) # number of averaging steps for param adapters)
 ```
+Next we initialize the Likelihood object we use to evaluate predictions. We use a Gaussian likelihood with a starting standard deviation of 0.1.
+```
+likelihood = GaussianLikelihood(sd = 0.1)
+```
+We would also like to measure the performance of the network using a metric such as mean squared error, so we initialize a metric object and add it to a metric list.
+```
+metricList = [SquaredError()]
+```
+
 Finally, we get to actually train the network. This is done with the following code.
 ```
 neuralNet.train(
         1000, # epochs to train for
         2, # increment between network saves
-        folderName="TrigRegression", # Name of folder for saved networks
-        networksPerFile=50 # Number of networks saved per file
-        returnPredictions=False, # Don't return the predictions
-        regression=True) # Use the regresion algorithm.
+        metricList = metricList, # List of evaluation metricx
+        folderName="TrigRegression") # Name of folder for saved networks
 ```
-After this, just run the program. Don't be concerned about the very high percent error, this is because we have predicted values very close to 0, for which that metric doesn't work well.
+After this, just run the program. 
