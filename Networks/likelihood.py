@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from TensorBNN.BNN_functions import multivariateLogProb
+from tensorBNN.BNN_functions import multivariateLogProb
 
 tfd = tfp.distributions
 
@@ -60,7 +60,7 @@ class Likelihood(object):
         pass
     
 
-class GaussianPrior(Likelihood):
+class GaussianLikelihood(Likelihood):
     
     def __init__(self, *argv, **kwargs):
         self.hypers=[kwargs["sd"]]

@@ -5,8 +5,8 @@ import tensorflow_probability as tfp
 
 from tensorflow.python.ops import gen_nn_ops
 
-from TensorBNN.BNN_functions import multivariateLogProb
-from TensorBNN.layer import Layer
+from tensorBNN.BNN_functions import multivariateLogProb
+from tensorBNN.layer import Layer
 
 tfd = tfp.distributions
 

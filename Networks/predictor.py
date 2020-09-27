@@ -1,10 +1,14 @@
-from TensorBNN.activationFunctions import (Relu, Sigmoid, Tanh, Elu, Softmax,
+from tensorBNN.activationFunctions import (Relu, Sigmoid, Tanh, Elu, Softmax,
                                           Leaky_relu, Prelu, SquarePrelu)
-from TensorBNN.layer import DenseLayer
-from TensorBNN.likelihood import GaussianLikelihood
+from tensorBNN.layer import DenseLayer
+from tensorBNN.likelihood import GaussianLikelihood
+
+from emcee.autocorr import integrated_time, function_1d
 
 import numpy as np
 import tensorflow as tf
+
+import math
 
 
 class predictor(object):
@@ -84,7 +88,6 @@ class predictor(object):
                     vectors[netNumber].append(tf.cast(weights[index1:index2, :index3], self.dtype).numpy().flatten())
                     
             matrices.append(tf.cast(weights0, self.dtype))
-        print(len(vectors), len(vectors[0]))
         for x in range(len(vectors)):
             vectors[x] = np.concatenate(vectors[x])
         
@@ -125,19 +128,19 @@ class predictor(object):
                     self.layers.append(self.layerDict[cleanedLine](inputDims=1,
                                                                    outputDims=1))
 
-    def predict(self, inputMatrix, skip=10):
+    def predict(self, inputMatrix, n=1):
         """Make predictions from an ensemble of neural networks.
 
         Arguments:
             * inputMatrix: The input data
-            * skip: Predict using every n networks where n = skip
+            * n: Predict using every n networks
         Returns:
             * initialResults: List with all networks used
         """
 
         inputVal = np.transpose(inputMatrix)
-        initialResults = [None] * (self.numNetworks//skip)
-        for m in range(0, self.numNetworks, skip):
+        initialResults = [None] * (self.numNetworks//n)
+        for m in range(0, self.numNetworks, n):
             current = inputVal
             matrixIndex = 0
             for layer in self.layers:
@@ -147,31 +150,34 @@ class predictor(object):
                     tensorList.append(self.matrices[matrixIndex+x][m, :, :])
                 matrixIndex += numTensors
                 current = layer.predict(current, tensorList)
-            initialResults[m//skip] = current.numpy()
+            initialResults[m//n] = current.numpy()
 
         return(initialResults)
     
-    def trainProbs(self, trainX, trainY, skip):
+    def trainProbs(self, trainX, trainY, n, likelihood):
         """ Calculate the negative log likelihoods for the training data.
         
         Arguments:
             * trainX: training input data
             * trainY: training output data
-            * skip: Predict using every n networks where n = skip
+            * n: Predict using every n networks
         
         """
-        
-        weights = self.likelihood.calcultateLogProb(input=tf.transpose(trainX),
+        weights = []
+        if(likelihood is not None):
+            weights = self.likelihood.calcultateLogProb(input=tf.transpose(trainX),
                                                     realVals=trainY,
-                                                    skip=skip,
+                                                    n=n,
                                                     hypers = self.hypers,
                                                     predict = self.predict,
                                                     dtype=self.dtype)
-
-        for m in range(0, self.numNetworks, skip):
+        else:
+            for m in range(0, self.numNetworks, n):
+                weights.append(tf.cast(0, self.dtype))
+        for m in range(0, self.numNetworks, n):
             matrixIndex = 0
             hyperIndex = 0
-            current = -weights[m//skip]
+            current = -weights[m//n]
             for layer in self.layers:
                 numTensors = layer.numTensors
                 numHyperTensors = layer.numHyperTensors
@@ -184,10 +190,10 @@ class predictor(object):
                 hyperIndex += numHyperTensors
                 matrixIndex += numTensors
                 current -= tf.cast(layer.calculateHyperProbs(hyperList, tensorList), self.dtype).numpy()
-            weights[m//skip] = current
+            weights[m//n] = current
         self.weightsTrain = np.array(weights)
    
-    def reweight(self, trainX, trainY, architecture, skip=10):
+    def reweight(self, architecture, trainX=None, trainY=None, n=1, likelihood=None):
         """ Calculate new weights for each network if they have the new 
         hyper paramters described in architecture. The weights are calculated
         according to p(theta|priors2)/p(theta|priors1). The new priors can be
@@ -198,28 +204,33 @@ class predictor(object):
             * trainX: training input data
             * trainY: training output data
             * architecture: new architecture file
-            * skip: Predict using every n networks where n = skip
+            * n: Predict using every n networks
         
         Returns:
             * weighting: Numpy array with new weights for the networks.
         """
         
         if(len(self.weightsTrain)==0):
-            self.trainProbs(trainX, trainY, skip)
+            self.trainProbs(trainX, trainY, n, likelihood)
         
         self.loadArchitecture(architecture=architecture)
         
-        weights = self.likelihood.calcultateLogProb(input=tf.transpose(trainX),
+        weights = []
+        if(likelihood is not None):
+            weights = self.likelihood.calcultateLogProb(input=tf.transpose(trainX),
                                                     realVals=trainY,
-                                                    skip=skip,
+                                                    n=n,
                                                     hypers = self.hypers,
                                                     predict = self.predict,
                                                     dtype=self.dtype)
+        else:
+            for m in range(0, self.numNetworks, n):
+                weights.append(tf.cast(0, self.dtype))
 
-        for m in range(0, self.numNetworks, skip):
+        for m in range(0, self.numNetworks, n):
             matrixIndex = 0
             hyperIndex = 0
-            current = -weights[m//skip]
+            current = -weights[m//n]
             for layer in self.layers:
                 numTensors = layer.numTensors
                 numHyperTensors = layer.numHyperTensors
@@ -232,7 +243,7 @@ class predictor(object):
                 hyperIndex += numHyperTensors
                 matrixIndex += numTensors
                 current -= tf.cast(layer.calculateHyperProbs(hyperList, tensorList), self.dtype).numpy()
-            weights[m//skip] = current
+            weights[m//n] = current
         self.weights = np.array(weights)
         
         weighting = np.exp(self.weightsTrain-weights)
@@ -242,21 +253,46 @@ class predictor(object):
         
         return(weighting)
 
-    def correlation(self, skip=1):
+    def autocorrelation(self, inputData):
         """ Calcualte the Pearson product-moment correlation between networks.
         
         Arguments:
-            * skip: Predict using every n networks where n = skip
+            * n: Predict using every n networks
             
         Returns:
             * coef: The coefficients between the networks used
         
         """
-        coef=[]
-        for m in range(0, self.numNetworks-skip, skip):
-            print()
-            matrix = np.array([self.vectors[m], self.vectors[m+skip]])
-            print(np.corrcoef(matrix))
-            
-            coef.append(np.corrcoef(matrix)[0,1])
-        return(coef)
+        predictions = self.predict(inputData, n=1)
+        output = np.squeeze(np.array(predictions)).T
+        
+        valFunc=0
+        accepted=0
+        
+        for x in range(len(output)):
+            temp = (integrated_time(output[x], tol=5, quiet=True))
+            if(not math.isnan(temp)):
+                valFunc += np.array((function_1d(output[x])))
+                accepted+=1
+        
+        valFunc=valFunc/accepted
+        
+        return(valFunc)
+        
+    def integratedAutoCorrelationTime(self, inputData):
+        predictions = self.predict(inputData, n=1)
+        output = np.squeeze(np.array(predictions)).T
+        
+        val=0
+        accepted=0
+        
+        for x in range(len(output)):
+            temp = (integrated_time(output[x], tol=5, quiet=True))
+            if(not math.isnan(temp)):
+                val += (integrated_time(output[x], tol=5, quiet=True))
+                accepted+=1
+        
+        val=val/accepted
+        
+        return(val)
+        

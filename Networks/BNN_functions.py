@@ -3,8 +3,6 @@ import math
 import numpy as np
 import tensorflow as tf
 
-from scipy import stats
-
 
 @tf.function
 def multivariateLogProb(sigmaIn, mu, x, dtype=tf.float32):

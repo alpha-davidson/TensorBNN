@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from TensorBNN.BNN_functions import cauchyLogProb
+from tensorBNN.BNN_functions import cauchyLogProb
 
 tfd = tfp.distributions
 

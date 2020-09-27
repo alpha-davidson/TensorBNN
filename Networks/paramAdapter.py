@@ -2,7 +2,6 @@ import math
 import random
 
 import numpy as np
-import tensorflow as tf
 
 from multiprocessing import Pool
 

@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from TensorBNN.paramAdapter import paramAdapter
+from tensorBNN.paramAdapter import paramAdapter
 
 tfd = tfp.distributions
 
@@ -38,8 +38,6 @@ class network(object):
         self.dtype = dtype
 
 
-        print(len(trainX), inputDims)
-        print(trainX.shape)
         self.trainX = tf.reshape(
             tf.constant(
                 trainX, dtype=self.dtype), [
@@ -138,10 +136,8 @@ class network(object):
                 index += numTensors
 
         if(self.likelihood.mainProbsInHypers):
-            print("prob1", prob)
             prob += self.calculateProbs(self.states, sd=argv[-1])
-            print("prob2", prob)
-
+            
         return(prob)
 
     def predict(self, train, *argv):
