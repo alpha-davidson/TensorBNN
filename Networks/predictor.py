@@ -253,7 +253,7 @@ class predictor(object):
         
         return(weighting)
 
-    def autocorrelation(self, inputData):
+    def autocorrelation(self, inputData, nMax):
         """ Calcualte the Pearson product-moment correlation between networks.
         
         Arguments:
@@ -276,10 +276,12 @@ class predictor(object):
                 accepted+=1
         
         valFunc=valFunc/accepted
+        if(nMax<len(valFunc)):
+            valFunc = valFunc[:nMax]
         
         return(valFunc)
         
-    def integratedAutoCorrelationTime(self, inputData):
+    def autoCorrelationLength(self, inputData, nMax):
         predictions = self.predict(inputData, n=1)
         output = np.squeeze(np.array(predictions)).T
         
@@ -294,5 +296,7 @@ class predictor(object):
         
         val=val/accepted
         
-        return(val)
+        if(val>nMax):
+            print("Correlation time is greater than maximum accepted value.")
         
+        return(val)
