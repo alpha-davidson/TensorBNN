@@ -61,6 +61,7 @@ class paramAdapter(object):
         self.eu = eu
         self.Ll = Ll
         self.Lu = Lu
+        self.eNumber = eNumber
         self.eGrid = np.linspace(el, eu, num=eNumber)
         self.lGrid = np.array(range(Ll, Lu + 1, int(lStep)))
         self.delta = delta
