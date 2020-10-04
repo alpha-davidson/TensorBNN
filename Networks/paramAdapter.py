@@ -75,7 +75,7 @@ class paramAdapter(object):
         self.m = m
         self.currentData = []
         self.allData = []
-        self.maxR = 1
+        self.maxR = 1e-8
         self.a = a
         self.i = -2
         self.previous_state = None
@@ -84,7 +84,8 @@ class paramAdapter(object):
 
         self.cores = cores
         self.strikes = 0
-        self.randomSteps = 10
+        self.maxStrikes = strikes
+        self.randomSteps = randomSteps
 
     def calck(self, gammaI, gammaJ):
         """ Calculates the covariance k between two states
@@ -147,6 +148,7 @@ class paramAdapter(object):
         self.i = -2
         self.previous_state = None
         self.current_state = None
+        self.strikes = 0
 
     def processChunk(self, eList, lList):
         """Processes a chunk of the e, L combinations.
@@ -178,7 +180,10 @@ class paramAdapter(object):
             * currentL: the new number of leapfrog steps
         """
 
-        if(self.strikes == 10):
+        if(self.strikes == self.maxStrikes):
+            self.el = self.el/2
+            self.eu = self.eu/2
+            self.eGrid = np.linspace(self.el, self.eu, num=self.eNumber)
             self.reset()
             self.strikes = 0
 
