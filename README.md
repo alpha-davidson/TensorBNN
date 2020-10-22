@@ -17,16 +17,16 @@ Alternatively, you can download `numpy` and `scipy` from source through the comm
 ```
 pip3 install numpy scipy
 ```
-TensorFlow and TensorFlow-probability must be instaled separately. The TensorFlow version must be 2.0. Using a 1.x version will not work. It is also highly recomended that this code be run on a gpu due to its high computational complexity. TensorFlow 2.0 for the gpu can be installed with the command:
+TensorFlow and TensorFlow-probability must be instaled separately. The TensorFlow version should be the most recent (2.3 at the moment). Using a 1.x version will not work, and neither will older versions of 2. It is also highly recomended that this code be run on a gpu due to its high computational complexity. TensorFlow for the gpu can be installed with the command:
 
 ```
-pip3 install tensorflow-gpu==2.0.0-beta1
+pip3 install tensorflow-gpu
 ```
 
-In order to be compatible with this version of tensorflow 2.0, tensorflow-probability version 0.8.0 must be installed. This is done with the following command:
+In order to be compatible with this version of tensorflow, the most recent version of tensorflow-probability (0.11) must be installed. This is done with the following command:
 
 ```
-pip3 install tensorflow-probability==0.8.0
+pip3 install tensorflow-probability
 ```
 
 
@@ -180,11 +180,14 @@ The variable filePath is the directory from which the networks are being loaded,
 
 The variable initialResults will be a list of numpy arrays, each numpy array corresponding to the predcitions from a single network in the BNN. The skip variable instructs the predictor to only use every n networks, where n=skip
 
-Additionally, the predictor function allows for the calculation of the correlation between different betworks through:
+Additionally, the predictor function allows for the calculation of the autocorrelation between different networks, as well as the autocorrelation length through:
 
 ```
-correlations = network.correlation(dtype)
+autocorrelations = network.autocorrelation(testData, nMax)
+autocorrelations = network.autoCorrelationLength(testData, nMax)
 ```
+Here, the autocorrelation is calculated based on the predictions of the different BNNs, and the results are averaged over the test data. nMax provides the largest lag value for the autocorrelation. These calculations are done with emcee.
+
 
 Finally, the predictor object can calculate new weights for the different networks if they were given new priors. These priors take the form of new Layer objects which must be referenced in an architecture file. The reweighting function call looks like this:
 
