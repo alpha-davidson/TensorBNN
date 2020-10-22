@@ -12,25 +12,26 @@ Numpy and scipy can be installed through the command:
 pip3 install numpy scipy
 ```
 
-The tensorflow version must be 2.0. Using a 1.x version will not work. It is also highly recomended that this code be run on a gpu due to its high computational complexit. Tensorflow 2.0 for the gpu can be installed with the command:
+TensorFlow and TensorFlow-probability must be instaled separately. The TensorFlow version should be the most recent (2.3 at the moment). Using a 1.x version will not work, and neither will older versions of 2. It is also highly recomended that this code be run on a gpu due to its high computational complexity. TensorFlow for the gpu can be installed with the command:
 
 ```
-pip3 install tensorflow-gpu==2.0.0-beta1
+pip3 install tensorflow-gpu
 ```
 
-In order to be compatible with tensorflow 2.0, the nightly version of tensorflow-probability must be installed. This is done with the following command:
+In order to be compatible with this version of tensorflow, the most recent version of tensorflow-probability (0.11) must be installed. This is done with the following command:
 
 ```
-pip3 install tfp-nightly
+pip3 install tensorflow-probability
 ```
 
-In order to use this code simply clone this repository and copy the Networks folder into the main folder of your project.
+In order to use this code you can either clone this repository and copy the Networks folder into a folder named tensorBNN in the main folder of your project, or download it using pip.
 ```
+pip install tensorBNN
 git clone https://github.com/alpha-davidson/TensorBNN.git
 ```
 
 After this, you can use the following command to import the general network obejct, and similar commands for the other objects.
 ```
-from Networks.network import network
+from tensorBNN.network import network
 ```
 
