@@ -4,12 +4,12 @@ title: Setup
 ---
 
 # Setup
-All python code written here is intended to be used in Python3. The code is dependent upon the packages numpy, tensorflow, tensorflow-probability, and scipy.
+All python code written here is intended to be used in Python3. The code is dependent upon the packages numpy, emcee, tensorflow, tensorflow-probability, and scipy.
 
 Numpy and scipy can be installed through the command:
 
 ```
-pip3 install numpy scipy
+pip3 install numpy scipy emcee
 ```
 
 TensorFlow and TensorFlow-probability must be instaled separately. The TensorFlow version should be the most recent (2.3 at the moment). Using a 1.x version will not work, and neither will older versions of 2. It is also highly recomended that this code be run on a gpu due to its high computational complexity. TensorFlow for the gpu can be installed with the command:
