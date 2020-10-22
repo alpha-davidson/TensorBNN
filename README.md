@@ -32,12 +32,13 @@ pip3 install tensorflow-probability
 
 ## Usage
 
-In order to use this code you must import network, Dense Layer, and an activation such as Relu. This can be done as follows:
+In order to use this code you must import network, Dense Layer,an activation such as Relu, and a likelihood such as the Gaussian likelihood. This can be done as follows:
 
 ```
 from TensorBNN.layer import DenseLayer
 from TensorBNN.network import network
 from TensorBNN.activationFunctions import Relu
+from tensorBNN.likelihood import GaussianLikelihood
 ```
 
 Next, it is highly convenient to turn off the deprecation warnings. These are all from tensorflow, tensorflow-probability, and numpy intereacting with tensorflow, so it isn't something easily fixed and there are a lot of warnings. These are turned off with:
