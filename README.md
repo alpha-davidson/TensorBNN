@@ -4,9 +4,9 @@ This package contains code which can be used to train Bayesian Neural Networks u
 For detailed information about this implementation, please see our paper on the arXiv: [TensorBNN: Bayesian Inference for Neural Networks using Tensorflow](https://arxiv.org/abs/2009.14393)
 
 ## Dependencies
-All python code written here is in python3. The code is dependent upon the packages `numpy`, `tensorflow`, `tensorflow-probability`, and `scipy`.
+All python code written here is in python3. The code is dependent upon the packages `numpy`, `emcee`,`tensorflow`, `tensorflow-probability`, and `scipy`.
 
-The package, along with `numpy` and `scipy`, can be installed via
+The package, along with `numpy`, `emcee`, and  `scipy`, can be installed via
 
 ```
 pip install tensorBNN
