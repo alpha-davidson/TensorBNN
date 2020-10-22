@@ -13,6 +13,7 @@ import tensorflow as tf
 from tensorBNN.activationFunctions import Tanh
 from tensorBNN.layer import DenseLayer
 from tensorBNN.network import network
+from tensorBNN.likelihood import GaussianLikelihood
 ```
 In order to obtain reproducible results we need to set random seeds. In order to be sure that absolutely everything is seeded, we use the following four lines of code
 ```
