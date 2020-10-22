@@ -1,7 +1,9 @@
 import math
 import random
+import sys
 
 import numpy as np
+import tensorflow as tf
 
 from multiprocessing import Pool
 
@@ -194,8 +196,8 @@ class paramAdapter(object):
         if(self.previous_state is not None):
             val = 0
             for old, new in zip(self.previous_state, self.current_state):
-                val += np.sum(np.square(new - old)) / (self.currentL)**(0.5)
-            print("SJD:", str(val))
+                val += tf.math.reduce_sum(np.square(tf.reshape(new,[-1]) - tf.reshape(old,[-1]))) / (self.currentL)**(0.5)
+            print("SJD:", val.numpy())
             self.currentData.append(val)
             if(val < 1e-8 and self.i // self.m > self.randomSteps):
                 self.strikes += 1
@@ -273,6 +275,12 @@ class paramAdapter(object):
                 else:
                     self.currentE = random.choice(self.eGrid)
                     self.currentL = random.choice(self.lGrid)
+                    
+                if(size==50):
+                    self.K=self.K[1:,1:]
+                    self.previousGamma=self.previousGamma[1:]
+                    self.allData=self.allData[1:]
+                    self.allSD=self.allSD[1:]
 
         self.i += 1
         return(self.currentE, self.currentL)
