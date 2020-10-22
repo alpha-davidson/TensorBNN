@@ -7,6 +7,7 @@ from emcee.autocorr import integrated_time, function_1d
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 import math
 
@@ -139,7 +140,7 @@ class predictor(object):
         """
 
         inputVal = np.transpose(inputMatrix)
-        initialResults = [None] * (self.numNetworks//n)
+        initialResults = [None] * math.ceil(self.numNetworks/n)
         for m in range(0, self.numNetworks, n):
             current = inputVal
             matrixIndex = 0
@@ -254,15 +255,6 @@ class predictor(object):
         return(weighting)
 
     def autocorrelation(self, inputData, nMax):
-        """ Calcualte the Pearson product-moment correlation between networks.
-        
-        Arguments:
-            * n: Predict using every n networks
-            
-        Returns:
-            * coef: The coefficients between the networks used
-        
-        """
         predictions = self.predict(inputData, n=1)
         output = np.squeeze(np.array(predictions)).T
         
@@ -291,12 +283,12 @@ class predictor(object):
         for x in range(len(output)):
             temp = (integrated_time(output[x], tol=5, quiet=True))
             if(not math.isnan(temp)):
-                val += (integrated_time(output[x], tol=5, quiet=True))
+                val += temp
                 accepted+=1
         
         val=val/accepted
         
-        if(val>nMax):
+        if(val[0]>nMax):
             print("Correlation time is greater than maximum accepted value.")
         
-        return(val)
+        return(val[0])
