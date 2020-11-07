@@ -15,18 +15,18 @@ pip install tensorBNN
 Alternatively, you can download `numpy` and `scipy` from source through the command:
 
 ```
-pip3 install numpy scipy
+pip install numpy scipy
 ```
 TensorFlow and TensorFlow-probability must be instaled separately. The TensorFlow version should be the most recent (2.3 at the moment). Using a 1.x version will not work, and neither will older versions of 2. It is also highly recomended that this code be run on a gpu due to its high computational complexity. TensorFlow for the gpu can be installed with the command:
 
 ```
-pip3 install tensorflow-gpu
+pip install tensorflow-gpu
 ```
 
 In order to be compatible with this version of tensorflow, the most recent version of tensorflow-probability (0.11) must be installed. This is done with the following command:
 
 ```
-pip3 install tensorflow-probability
+pip install tensorflow-probability
 ```
 
 
@@ -35,9 +35,9 @@ pip3 install tensorflow-probability
 In order to use this code you must import network, Dense Layer,an activation such as Relu, and a likelihood such as the Gaussian likelihood. This can be done as follows:
 
 ```
-from TensorBNN.layer import DenseLayer
-from TensorBNN.network import network
-from TensorBNN.activationFunctions import Relu
+from tensorBNN.layer import DenseLayer
+from tensorBNN.network import network
+from tensorBNN.activationFunctions import Relu
 from tensorBNN.likelihood import GaussianLikelihood
 ```
 
