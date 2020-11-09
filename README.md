@@ -12,11 +12,14 @@ The package, along with `numpy`, `emcee`, and  `scipy`, can be installed via
 pip install tensorBNN
 ```
 
-Alternatively, you can download `numpy` and `scipy` from source through the command:
+Alternatively, you can clone the repository and download `numpy`, `scipy,` and `emcee` from source through the command:
 
 ```
-pip install numpy scipy
+pip install numpy scipy emcee
 ```
+
+In order for the repository to work having cloned it from github add the tensorBNN folder to the python source, and it should work the same as having donwloaded it via pip.
+
 TensorFlow and TensorFlow-probability must be instaled separately. The TensorFlow version should be the most recent (2.3 at the moment). Using a 1.x version will not work, and neither will older versions of 2. It is also highly recomended that this code be run on a gpu due to its high computational complexity. TensorFlow for the gpu can be installed with the command:
 
 ```
