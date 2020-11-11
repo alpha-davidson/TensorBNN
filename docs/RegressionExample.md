@@ -24,10 +24,10 @@ tf.random.set_seed(3)
 ```
 # Data preparation 
 Next, we need to generate our dataset. We are simply going to use the function ```f(x)=x*sin(2pi*x)-cos(pi*x).``` 
-We will generate a training dataset with 21 points and a validation dataset with 20 points. This is done as follows.
+We will generate a training dataset with 31 points and a validation dataset with 30 points. This is done as follows.
 ```
-trainIn=np.linspace(-2,2,num=21)
-valIn=np.linspace(-2+2/20,2.0-2/20,num=20)
+trainIn=np.linspace(-2,2,num=31)
+valIn=np.linspace(-2+2/30,2.0-2/30,num=30)
 trainOut = np.sin(trainIn*math.pi*2)*trainIn-np.cos(trainIn*math.pi)
 valOut = np.sin(valIn*math.pi*2)*valIn-np.cos(valIn*math.pi)
 ```
