@@ -86,7 +86,6 @@ class Layer(object):
         expanded = tf.reshape(current, currentShape)
         return(expanded)
 
-    @tf.function
     def predict(self, inputTensor, tensors):
         """Calculates the output of the layer based on the given input tensor
         and weight and bias values
@@ -99,11 +98,9 @@ class Layer(object):
         """
         pass
 
-    @tf.function
     def updateParameters(self, tensors):
         self.parameters = tensors
 
-    @tf.function
     def updateHypers(self, hypers):
         self.hypers = hypers
 
@@ -290,7 +287,6 @@ class DenseLayer(Layer):
 
         return([tempWeights, tempBiases])
 
-    @tf.function
     def predict(self, inputTensor, tensors):
         """Calculates the output of the layer based on the given input tensor
         and weight and bias values
