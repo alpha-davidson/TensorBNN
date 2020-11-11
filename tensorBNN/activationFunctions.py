@@ -223,7 +223,6 @@ class Prelu(Layer):
         expanded = tf.reshape(current, currentShape)
         return(expanded)
 
-    @tf.function
     def predict(self, inputTensor, slopes):
         """Calculates the output of the layer based on the given input tensor
         and weight and bias values
@@ -241,7 +240,6 @@ class Prelu(Layer):
         result = tf.where(tf.math.less(inputTensor, 0), activated, inputTensor)
         return(self.expand(result))
 
-    @tf.function
     def updateParameters(self, slopes):
         """ Updates the network parameters
 
@@ -250,7 +248,6 @@ class Prelu(Layer):
         """
         self.parameters = [slopes[0]]
 
-    @tf.function
     def updateHypers(self, hypers):
         """ Updates the network parameters
 
@@ -387,7 +384,6 @@ class SquarePrelu(Layer):
         expanded = tf.reshape(current, currentShape)
         return(expanded)
 
-    @tf.function
     def predict(self, inputTensor, slopes):
         """Calculates the output of the layer based on the given input tensor
         and weight and bias values
@@ -405,7 +401,6 @@ class SquarePrelu(Layer):
         result = tf.where(tf.math.less(inputTensor, 0), activated, inputTensor)
         return(self.expand(result))
 
-    @tf.function
     def updateParameters(self, slopes):
         """ Updates the network parameters
 
@@ -414,7 +409,6 @@ class SquarePrelu(Layer):
         """
         self.parameters = [slopes[0]]
 
-    @tf.function
     def updateHypers(self, hypers):
         """ Updates the network parameters
 
