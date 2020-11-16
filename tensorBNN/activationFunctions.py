@@ -10,7 +10,19 @@ from tensorBNN.layer import Layer
 
 tfd = tfp.distributions
 
+class Exp(Layer):
+    """Exponential activation function"""
 
+    def __init__(self, inputDims=None, outputDims=None):
+        self.numTensors = 0
+        self.numHyperTensors = 0
+        self.name = "Exp"
+
+    def predict(self, inputTensor, _):
+        result = tf.math.exp(inputTensor)
+        return(result)
+    
+    
 class Relu(Layer):
     """Relu activation function"""
 
