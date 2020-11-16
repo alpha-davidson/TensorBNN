@@ -1,4 +1,4 @@
-from tensorBNN.activationFunctions import (Relu, Sigmoid, Tanh, Elu, Softmax,
+from tensorBNN.activationFunctions import (Exp, Relu, Sigmoid, Tanh, Elu, Softmax,
                                           Leaky_relu, Prelu, SquarePrelu)
 from tensorBNN.layer import DenseLayer
 from tensorBNN.likelihood import GaussianLikelihood
@@ -28,7 +28,7 @@ class predictor(object):
             is not performed this does not matter.
         
         """
-        self.layerDict = {"relu": Relu, "sigmoid": Sigmoid, "tanh": Tanh,
+        self.layerDict = {"Exp": Exp,"relu": Relu, "sigmoid": Sigmoid, "tanh": Tanh,
                           "elu": Elu, "softmax": Softmax,
                           "leakyrelu": Leaky_relu, "prelu": Prelu,
                           "squareprelu": SquarePrelu, "dense": DenseLayer}
