@@ -1,7 +1,10 @@
 # TensorBNN
 This package contains code which can be used to train Bayesian Neural Networks using Hamiltonian Monte Carlo sampling as proposed by Radford Neal in his thesis "Bayesian Learning for Neural Networks" along with added features. The package is written in python3 and uses the packages `Tensorflow` and `Tensorflow-Probability` as the framework for the implementation. 
 
-For detailed information about this implementation, please see our paper on the arXiv: [TensorBNN: Bayesian Inference for Neural Networks using Tensorflow](https://arxiv.org/abs/2009.14393)
+For detailed information about this implementation, please see our paper on the arXiv: [TensorBNN: Bayesian Inference for Neural Networks using Tensorflow](https://arxiv.org/abs/2009.14393). Cite as: 
+
+B. Kronheim, M. Kuchera, H. Prosper, TensorBNN:Bayesian inference for neural network training using TensorFlow. arXiv:https://arxiv.org/abs/2009.14393.
+
 
 ## Dependencies
 All python code written here is in python3. The code is dependent upon the packages `numpy`, `emcee`,`tensorflow`, `tensorflow-probability`, and `scipy`.
