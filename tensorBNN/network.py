@@ -85,7 +85,6 @@ class network(object):
     def calculateProbs(self, *argv, sd=None):
         """Calculates the log probability of the current network values
         as well as the log probability of their prediction.
-
         Arguments:
             * argv: an undetermined number of tensors containg the weights
             and biases.
@@ -114,7 +113,6 @@ class network(object):
 
     def calculateHyperProbs(self, *argv):
         """Calculates the log probability of the current hyper parameters
-
         Arguments:
             * argv: an undetermined number of tensors containg the hyper
                     parameters
@@ -142,13 +140,11 @@ class network(object):
 
     def predict(self, train, *argv):
         """Makes a prediction
-
         Arguments:
             * train: a boolean value which determines whether to use training
                      data
             * argv: an undetermined number of tensors containg the weights
             and biases.
-
         Returns:
             * prediction: a prediction from the network
         """
@@ -216,7 +212,6 @@ class network(object):
             * delta: constant, 0.1 in paper
             * strikes: iterations with no movement before reseting adapter
             * randomSteps: averaging cycles at beginning with random values
-
         Returns nothing
         """
 
@@ -266,7 +261,6 @@ class network(object):
 
     def updateStates(self):
         """ Updates the states of the layer object.
-
         Has no arguments, returns nothing.
         """
         indexh = 0
@@ -320,7 +314,6 @@ class network(object):
     def stepMCMC(self):
         """ Steps the markov chain for each of the network parameters and the
         hyper parameters forward one step
-
         Has no arguments, returns nothing.
         """
 
@@ -335,7 +328,6 @@ class network(object):
         if(not(self.currentInnerStep is func)):
             del self.currentInnerStep
             self.currentInnerStep = func
-        
         self.avg_acceptance_ratio = tf.reduce_mean(
             input_tensor=tf.exp(tf.minimum(kernel_results.log_accept_ratio,
                                 0.)))
@@ -397,7 +389,6 @@ class network(object):
             * networksPerFile: number of networks saved in a given file
             * returnPredictions: whether to return the prediction from the
                                  network
-
         Returns:
             * results: the output of the network when sampled
                        (if returnPrediction=True)
@@ -464,11 +455,11 @@ class network(object):
                 temp = []
                 for n in range(len(self.states)):
                     temp.append(open(filePath + "/" + str(n) + "." +
-                                     str(int(iter_ //
+                                     str(int((iter_-startSampling) //
                                              (networksPerFile *
                                               samplingStep))) +
                                      ".txt", "wb"))
-                temp.append(open(filePath + "/hypers" + str(int(iter_ //
+                temp.append(open(filePath + "/hypers" + str(int((iter_-startSampling) //
                                              (networksPerFile *
                                               samplingStep))) + ".txt", "wb"))
                 files = temp
@@ -487,14 +478,28 @@ class network(object):
                     numFiles += 1
                 file.write((str(numNetworks) + " " + str(numFiles) +
                             " " + str(len(self.states))+"\n").encode("utf-8"))
-                file.write(str(len(self.hyperStates)).encode("utf-8"))
+                hyperStateCount = 0
+                for state in self.hyperStates:
+                  hyperStateCount+=tf.size(state)
+                file.write(str(hyperStateCount.numpy()).encode("utf-8"))
                 file.close()
             # Record prediction
             if(iter_ > startSampling and (iter_) % samplingStep == 0):
                 if(filePath is not None):
                     for n in range(len(files)-1):
                         np.savetxt(files[n], self.states[n])
-                    np.savetxt(files[-1], self.hyperStates)
+                    tempStates=[]
+                    for state in self.hyperStates:
+                     length=1
+                     for x in state.shape:
+                        length=length*x
+                     if(length>1):
+                       splitStates = tf.split(state, length)
+                       for splitState in splitStates:
+                           tempStates.append(splitState)
+                     else:
+                       tempStates.append(state)
+                    np.savetxt(files[-1], tempStates)
             likelihood.display(self.hyperStates)           
             print("Time elapsed:", time.time() - startTime)
 
