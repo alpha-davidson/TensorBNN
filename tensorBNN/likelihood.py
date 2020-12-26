@@ -95,7 +95,7 @@ class GaussianLikelihood(Likelihood):
         sigma = tf.ones_like(current) * sd
         realVals = tf.reshape(kwargs["realVals"], current.shape)
         result = multivariateLogProb(sigma, current, realVals, kwargs["dtype"])
-    
+
         return(result)
     
     def calcultateLogProb(self, *argv, **kwargs):
@@ -110,7 +110,7 @@ class GaussianLikelihood(Likelihood):
             * predict: the function used to make a prediction from the 
             current neural net
             * dtype: the datatype of the network
-            * skip: Use every n networks where n=skip
+            * n: Use every n networks
         Returns:
             * result: the log probabilities of the real vals given the
             predicted values
@@ -118,14 +118,14 @@ class GaussianLikelihood(Likelihood):
         sd = []
         for x in range(len(kwargs["hypers"])):
             sd.append(kwargs["hypers"][x][-1])
-
-        current = kwargs["predict"](argv[0], skip=kwargs["skip"])
+        current = kwargs["predict"](argv[0], n=kwargs["n"])
         for x in range(len(current)):
             current[x] = tf.transpose(current[x])
         
         realVals = tf.reshape(kwargs["realVals"], current[0].shape)
         result = []
         for x in range(len(current)):
+            
             result.append(multivariateLogProb(tf.ones_like(current[0]) * sd[x],
                                               current[x], realVals,
                                               kwargs["dtype"]))
@@ -134,7 +134,7 @@ class GaussianLikelihood(Likelihood):
     
     def display(self, hypers):
         print("Loss Standard Deviation: ", hypers[-1].numpy())
-
+        
 
 class BernoulliLikelihood(Likelihood):
     def __init__(self, *argv, **kwargs):
