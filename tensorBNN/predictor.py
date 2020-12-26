@@ -28,7 +28,7 @@ class predictor(object):
             is not performed this does not matter.
         
         """
-        self.layerDict = {"Exp": Exp,"relu": Relu, "sigmoid": Sigmoid, "tanh": Tanh,
+        self.layerDict = {"Exp": Exp, "relu": Relu, "sigmoid": Sigmoid, "tanh": Tanh,
                           "elu": Elu, "softmax": Softmax,
                           "leakyrelu": Leaky_relu, "prelu": Prelu,
                           "squareprelu": SquarePrelu, "dense": DenseLayer}
@@ -42,7 +42,6 @@ class predictor(object):
 
     def loadNetworks(self):
         """Loads saved networks.
-
         """
 
         summary = []
@@ -87,7 +86,6 @@ class predictor(object):
                     index3 = weightsSplitDims[2]
                     weights0[netNumber, :, :] = weights[index1:index2, :index3]
                     vectors[netNumber].append(tf.cast(weights[index1:index2, :index3], self.dtype).numpy().flatten())
-                    
             matrices.append(tf.cast(weights0, self.dtype))
         for x in range(len(vectors)):
             vectors[x] = np.concatenate(vectors[x])
@@ -131,7 +129,6 @@ class predictor(object):
 
     def predict(self, inputMatrix, n=1):
         """Make predictions from an ensemble of neural networks.
-
         Arguments:
             * inputMatrix: The input data
             * n: Predict using every n networks
@@ -166,10 +163,17 @@ class predictor(object):
         """
         weights = []
         if(likelihood is not None):
-            weights = self.likelihood.calcultateLogProb(input=tf.transpose(trainX),
+            hyperCountShape = np.array(self.likelihood.hypers).shape
+            hyperCount = 1
+            for x in hyperCountShape:
+              hyperCount*=x
+            likelihoodHypers = []
+            for hyper in self.hypers:
+              likelihoodHypers.append([hyper[-hyperCount:]])
+            weights = self.likelihood.calcultateLogProb(tf.transpose(trainX),
                                                     realVals=trainY,
                                                     n=n,
-                                                    hypers = self.hypers,
+                                                    hypers = likelihoodHypers,
                                                     predict = self.predict,
                                                     dtype=self.dtype)
         else:
@@ -218,12 +222,21 @@ class predictor(object):
         
         weights = []
         if(likelihood is not None):
-            weights = self.likelihood.calcultateLogProb(input=tf.transpose(trainX),
+            
+            hyperCountShape = np.array(likelihood.hypers).shape
+            hyperCount = 1
+            for x in hyperCountShape:
+              hyperCount*=x
+            likelihoodHypers = []
+            for hyper in self.hypers:
+              likelihoodHypers.append([hyper[-hyperCount:]])
+            weights = likelihood.calcultateLogProb(tf.transpose(trainX),
                                                     realVals=trainY,
                                                     n=n,
-                                                    hypers = self.hypers,
+                                                    hypers = likelihoodHypers,
                                                     predict = self.predict,
                                                     dtype=self.dtype)
+
         else:
             for m in range(0, self.numNetworks, n):
                 weights.append(tf.cast(0, self.dtype))
@@ -246,8 +259,7 @@ class predictor(object):
                 current -= tf.cast(layer.calculateHyperProbs(hyperList, tensorList), self.dtype).numpy()
             weights[m//n] = current
         self.weights = np.array(weights)
-        
-        weighting = np.exp(self.weightsTrain-weights)
+        weighting = np.exp(self.weightsTrain-self.weights)
         weighting/=np.sum(weighting)
         
         self.loadArchitecture()
@@ -292,3 +304,41 @@ class predictor(object):
             print("Correlation time is greater than maximum accepted value.")
         
         return(val[0])
+
+    def extractParameters(self):
+        """
+        Returns a list with all the parameter matrices. The first axis in each
+        matrix corresponds to the network.
+        """
+        return(self.matrices)
+
+    def extractHyperParameters(self):
+        """
+        Returns an array with all the hyper parameters. The first axis corresponds
+        to the network.
+        """
+        return(np.array(self.hypers))
+
+    def parameterStatistics(self):
+        """
+        Returns two list, the first with the means of all the parameters,
+         and the second with standard deviations of the parameters.
+        """
+        parameterMeans = []
+        parameterSds = []
+        for matrix in self.matrices:
+          parameterMeans.append(np.mean(matrix, axis=0))
+          parameterSds.append(np.std(matrix, axis=0))
+      
+        return(parameterMeans, parameterSds)
+
+    def hyperStatistics(self):
+        """
+        Returns two arrays, the first with the means of all the hyper parameters,
+         and the second with standard deviations of the hyper parameters.
+        """
+        hypers = np.array(self.hypers)
+        hyperMeans = np.mean(hypers, axis=0)
+        hyperSds = np.std(hypers, axis=0)
+      
+        return(hyperMeans, hyperSds)
