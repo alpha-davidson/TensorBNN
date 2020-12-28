@@ -3,7 +3,7 @@ This package contains code which can be used to train Bayesian Neural Networks u
 
 For detailed information about this implementation, please see our paper on the arXiv: [TensorBNN: Bayesian Inference for Neural Networks using Tensorflow](https://arxiv.org/abs/2009.14393). Cite as: 
 
-B. Kronheim, M. Kuchera, H. Prosper, TensorBNN:Bayesian inference for neural network training using TensorFlow. arXiv:https://arxiv.org/abs/2009.14393.
+B. Kronheim, M. Kuchera, H. Prosper, TensorBNN: Bayesian inference for neural network training using TensorFlow. arXiv:https://arxiv.org/abs/2009.14393.
 
 
 ## Dependencies
