@@ -248,6 +248,7 @@ class Prelu(Layer):
 
         """
         slopes = slopes[0]
+        slopes = tf.squeeze(slopes)
         slopes = tf.reshape(slopes, (len(slopes), 1))
         activated = tf.multiply(slopes, inputTensor)
         result = tf.where(tf.math.less(inputTensor, 0), activated, inputTensor)
@@ -409,6 +410,7 @@ class SquarePrelu(Layer):
 
         """
         slopes = slopes[0]**2
+        slopes = tf.squeeze(slopes)
         slopes = tf.reshape(slopes, (len(slopes), 1))
         activated = tf.multiply(slopes, inputTensor)
         result = tf.where(tf.math.less(inputTensor, 0), activated, inputTensor)
