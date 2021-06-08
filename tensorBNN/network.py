@@ -246,18 +246,23 @@ class network(object):
         self.mainKernel = tfp.mcmc.HamiltonianMonteCarlo(
             target_log_prob_fn=self.calculateProbs,
             num_leapfrog_steps=self.leapfrog,
-            step_size=self.step_size,
+            step_size=[self.step_size],
             state_gradients_are_stopped=True,
             name="main")
+        """
+        self.mainKernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
+            inner_kernel=mainKernel, num_adaptation_steps=int(burnin * 0.8))
+        """
+        
         # Setup the Transition Kernel for the hyper parameters
-        self.hyperKernel = tfp.mcmc.HamiltonianMonteCarlo(
+        hyperKernel = tfp.mcmc.HamiltonianMonteCarlo(
             target_log_prob_fn=self.calculateHyperProbs,
             num_leapfrog_steps=hyperLeapfrog,
-            step_size=self.hyper_step_size,
-            step_size_update_fn=tfp.mcmc.make_simple_step_size_update_policy(
-                num_adaptation_steps= int(burnin * 0.8),
-                decrement_multiplier=0.01),
+            step_size=[self.hyper_step_size],
             state_gradients_are_stopped=True)
+        
+        self.hyperKernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
+            inner_kernel=hyperKernel, num_adaptation_steps=int(burnin * 0.8))
 
     def updateStates(self):
         """ Updates the states of the layer object.
@@ -278,38 +283,61 @@ class network(object):
                 index += numTensors
 
         
-    @tf.function
-    def innerStepMain(self, leapfrogSteps, stepSize, states):
+    @tf.function(jit_compile=True)
+    def innerStepMain(self, leapfrogSteps, stepSize, states, kernel_results):
         
+        """
         mainKernel = tfp.mcmc.HamiltonianMonteCarlo(
             target_log_prob_fn=self.calculateProbs,
             num_leapfrog_steps=leapfrogSteps,
             step_size=stepSize,
             state_gradients_are_stopped=True)
-    
+        """
+        """
         
-    
         num_results = 1
-        
         states, kernel_results = tfp.mcmc.sample_chain(
             num_results=num_results,
             num_burnin_steps=0,  # start collecting data on first step
             current_state=states,  # starting parts of chain
             parallel_iterations=1,
-            kernel=mainKernel)
-        return(kernel_results, states)
-    
-    @tf.function
-    def innerStepHyper(self, hyperStates):
+            kernel=mainKernel,
+            trace_fn=lambda _, pkr: [pkr.inner_results.accepted_results.step_size,
+                             pkr.inner_results.log_accept_ratio,
+                             pkr.inner_results.accepted_results.target_log_prob])
+        """
+        """
+        kernelInnerAccepted = kernel_results.inner_results.accepted_results._replace(
+                    num_leapfrog_steps = kernel_results.inner_results.accepted_results.num_leapfrog_steps+1)
+        kernelInner =  kernel_results.inner_results._replace(accepted_results=kernelInnerAccepted)
+        kernel_results = kernel_results._replace(inner_results=kernelInner)
+        """
+        states, kernel_results = self.mainKernel.one_step(states, kernel_results)
         
+        return([kernel_results.accepted_results.step_size, kernel_results.log_accept_ratio,
+                 kernel_results.accepted_results.target_log_prob], states,kernel_results)
+    
+    @tf.function(jit_compile=True)
+    def innerStepHyper(self, hyperStates,kernel_results):
+        """
         num_results=1
         hyperStates, hyper_kernel_results = tfp.mcmc.sample_chain(
             num_results=num_results,
             num_burnin_steps=0,  # start collecting data on first step
             current_state=hyperStates,  # starting parts of chain
             parallel_iterations=1,#self.cores,
-            kernel=self.hyperKernel)
-        return(hyper_kernel_results, hyperStates)
+            kernel=self.hyperKernel,
+            trace_fn=lambda _, pkr: [pkr.inner_results.accepted_results.step_size,
+                             pkr.inner_results.log_accept_ratio,
+                             pkr.inner_results.accepted_results.target_log_prob])
+        """
+        
+        
+        hyperStates, kernel_results = self.hyperKernel.one_step(hyperStates, kernel_results)
+        
+        return([kernel_results.new_step_size, kernel_results.inner_results.log_accept_ratio,
+                 kernel_results.inner_results.accepted_results.target_log_prob], hyperStates,kernel_results)
+    
     
     def stepMCMC(self):
         """ Steps the markov chain for each of the network parameters and the
@@ -317,25 +345,22 @@ class network(object):
         Has no arguments, returns nothing.
         """
 
-        mcmc = time.time()
-        
-        
-        
-        
         # Setup the Markov Chain for the network parameters
-        kernel_results, self.states = self.innerStepMain(self.leapfrog, self.step_size, self.states)
-        func = self.innerStepMain._stateful_fn._get_concrete_function_internal_garbage_collected(self.leapfrog, self.step_size, self.states)
+        [step_size, log_accept_ratio, target_log_prob], self.states,\
+            self.mainKernelStatus = self.innerStepMain(self.leapfrog, self.step_size, self.states,self.mainKernelStatus)
+        func = self.innerStepMain._stateful_fn._get_concrete_function_internal_garbage_collected(self.leapfrog, self.step_size, self.states,self.mainKernelStatus)
+        self.step_size=step_size
+        self.leapfrog = self.mainKernelStatus.accepted_results.num_leapfrog_steps
         if(not(self.currentInnerStep is func)):
             del self.currentInnerStep
             self.currentInnerStep = func
         self.avg_acceptance_ratio = tf.reduce_mean(
-            input_tensor=tf.exp(tf.minimum(kernel_results.log_accept_ratio,
+            input_tensor=tf.exp(tf.minimum(log_accept_ratio,
                                 0.)))
-        self.loss = kernel_results.accepted_results.target_log_prob
+        self.loss = target_log_prob
         
         self.loss = -tf.reduce_sum(input_tensor=self.loss)
-        for x in range(len(self.states)):
-            self.states[x] = self.states[x][0]
+        
         index = 0
         for n in range(len(self.layers)):
             numTensors = self.layers[n].numTensors
@@ -345,23 +370,26 @@ class network(object):
                 index += numTensors
         
         # Setup the Markov Chain for the hyper parameters
-        
-        hyper_kernel_results, self.hyperStates = self.innerStepHyper(self.hyperStates)
+        [step_size, log_accept_ratio, target_log_prob], self.hyperStates,\
+            self.hyperKernelStatus= self.innerStepHyper(self.hyperStates,self.hyperKernelStatus)
         
         self.hyper_avg_acceptance_ratio = tf.reduce_mean(
             input_tensor=tf.exp(
-                tf.minimum(hyper_kernel_results.log_accept_ratio, 0.)))
+                tf.minimum(log_accept_ratio, 0.)))
         
-        self.hyper_loss = hyper_kernel_results.accepted_results.target_log_prob
-        
-        
+        self.hyper_loss = target_log_prob
+        self.hyper_step_size = step_size[0]
         self.hyper_loss = -tf.reduce_mean(input_tensor=self.hyper_loss)
         
-        
+        """
         for x in range(len(self.hyperStates)):
             self.hyperStates[x] = self.hyperStates[x][0]
         
-        
+        self.hyper_loss = 1
+        self.hyper_step_size = 1
+        self.hyper_loss = 1
+        self.hyper_avg_acceptance_ratio=1
+        """
         indexh = 0
         for n in range(len(self.layers)):
             numHyperTensors = self.layers[n].numHyperTensors
@@ -421,31 +449,45 @@ class network(object):
 
         iter_ = 0
         tf.random.set_seed(50)
+        self.mainKernelStatus = self.mainKernel.bootstrap_results(self.states)
+        self.hyperKernelStatus = self.hyperKernel.bootstrap_results(self.hyperStates)
+        kernelAccepted = self.mainKernelStatus.accepted_results._replace(
+                    num_leapfrog_steps = self.leapfrog, step_size = self.step_size)
+        self.mainKernelStatus = self.mainKernelStatus._replace(accepted_results=kernelAccepted)
+        startTime = time.time()
         while(iter_ < epochs):  # Main training loop
             iter_ += 1
-            startTime = time.time()
             self.stepMCMC()
             
-            print()
+            if(iter_%1==0):
+                
+                print()
+                print(self.step_size,
+                        self.leapfrog)
+                print(
+                    "iter:{:>2}  Network loss:{: 9.3f}".format(iter_, self.loss),
+                    "step_size:{:.7f} leapfrog_num:{:>4}".format(
+                        self.step_size,
+                        self.leapfrog),
+                    "avg_acceptance_ratio:{:.4f}".format(self.avg_acceptance_ratio)
+                    )
+                print(
+                    "Hyper loss:{:9.3f}  step_size:{:.7f}".format(
+                        self.hyper_loss * 1,
+                        self.hyper_step_size * 1),
+                    "avg_acceptance_ratio:{:.4f}".format(
+                        self.hyper_avg_acceptance_ratio * 1))
+                self.metrics(self.predict(train=True), self.trainY,
+                             self.predict(train=False), self.validateY )
+            step, leap = self.adapt.update(self.states)
+            self.step_size=step+self.step_size*0
+            self.leapfrog=leap
+            kernelAccepted = self.mainKernelStatus.accepted_results._replace(
+                    num_leapfrog_steps = self.leapfrog, step_size = self.step_size)
+            self.mainKernelStatus = self.mainKernelStatus._replace(accepted_results=kernelAccepted)
             
-            print(
-                "iter:{:>2}  Network loss:{: 9.3f}".format(iter_, self.loss),
-                "step_size:{:.7f} leapfrog_num:{:>4}".format(
-                    self.step_size,
-                    self.leapfrog),
-                "avg_acceptance_ratio:{:.4f}".format(self.avg_acceptance_ratio)
-                )
-            print(
-                "Hyper loss:{:9.3f}  step_size:{:.7f}".format(
-                    self.hyper_loss * 1,
-                    self.hyper_step_size * 1),
-                "avg_acceptance_ratio:{:.4f}".format(
-                    self.hyper_avg_acceptance_ratio * 1))
-
-            self.metrics(self.predict(train=True), self.trainY,
-                         self.predict(train=False), self.validateY )
-            self.step_size, self.leapfrog = self.adapt.update(self.states)
             self.step_size = tf.cast(self.step_size, self.dtype)
+            
             # Create new files to record network
             indexShift = iter_ - startSampling - 1
             indexInterval = networksPerFile * samplingStep
@@ -500,8 +542,10 @@ class network(object):
                      else:
                        tempStates.append(state)
                     np.savetxt(files[-1], tempStates)
-            likelihood.display(self.hyperStates)           
-            print("Time elapsed:", time.time() - startTime)
+            if(iter_%1==0):
+                likelihood.display(self.hyperStates)           
+                print("Time elapsed:", time.time() - startTime)
+                startTime = time.time()
 
         for file in files:
             file.close()
