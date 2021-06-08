@@ -105,7 +105,7 @@ class PercentError(Metric):
    
     def display(self):
         print("training percent error{: 7.3f}".format(self.percentErrorTrain),
-                      "training percent error{: 7.3f}".format(self.percentErrorValidate))
+                      "validation percent error{: 7.3f}".format(self.percentErrorValidate))
         
 class Accuracy(Metric):
     """ Caluclates the accuracy of predictions """
@@ -139,4 +139,3 @@ class Accuracy(Metric):
         print("training accuracy{: 9.5f}".format(self.accuracyTrain),
                       "validation accuracy{: 9.5f}".format(
                           self.accuracyValidate))
-        
