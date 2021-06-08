@@ -66,7 +66,6 @@ class GaussianLikelihood(Likelihood):
         self.hypers=[kwargs["sd"]]
         self.mainProbsInHypers = True
     
-    @tf.function
     def makeResponseLikelihood(self, *argv, **kwargs):
         """Make a prediction and predict its probability from a multivariate
         normal distribution
@@ -141,7 +140,6 @@ class BernoulliLikelihood(Likelihood):
         self.hypers=[]
         self.mainProbsInHypers=False
     
-    @tf.function
     def makeResponseLikelihood(self, *argv,  **kwargs):
         """Make a prediction and predict its probability from a Bernoulli
            normal distribution
