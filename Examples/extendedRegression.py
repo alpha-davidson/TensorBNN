@@ -15,14 +15,11 @@ import pylab as plt
 
 
 from tensorBNN.activationFunctions import Tanh
-from tensorBNN.layer import DenseLayer
-from tensorBNN.network import network
-from tensorBNN.likelihood import GaussianLikelihood
+from tensorBNN.layer import GaussianDenseLayer
+from tensorBNN.networkFinal import network
+from tensorBNN.likelihood import FixedGaussianLikelihood
 from tensorBNN.metrics import SquaredError, PercentError
 from tensorBNN.predictor import predictor
-
-
-import time
 
 startTime = time.time()
 
@@ -111,7 +108,7 @@ def main():
             activation.append(weightBias[0])
     
     
-    likelihood=GaussianLikelihood(sd=0.1)
+    likelihood=FixedGaussianLikelihood(sd=0.1)
     metricList=[SquaredError(mean=normInfo[0], sd=normInfo[1]), 
                 PercentError(mean=normInfo[0], sd=normInfo[1])]
 
@@ -123,7 +120,7 @@ def main():
                 data[2], # validation input data
                 data[3].T) # validation output data)
     
-    layer = DenseLayer( # Dense layer object
+    layer = GaussianDenseLayer( # Dense layer object
         inputDims, # Size of layer input vector
         width, # Size of layer output vector
         seed=seed, # Random seed
@@ -133,7 +130,7 @@ def main():
     neuralNet.add(Tanh()) # Tanh activation function
     seed += 1000 # Increment random seed
     for n in range(hidden - 1): # Add more hidden layers
-        neuralNet.add(DenseLayer(width,
+        neuralNet.add(GaussianDenseLayer(width,
                                 width,
                                 seed=seed,
                                 dtype=dtype,
@@ -141,36 +138,37 @@ def main():
         neuralNet.add(Tanh())
         seed += 1000
 
-    neuralNet.add(DenseLayer(width,
+    neuralNet.add(GaussianDenseLayer(width,
                             outputDims,
                             seed=seed,
                             dtype=dtype,
                             weights=weights[-1], biases=biases[-1]))
 
     neuralNet.setupMCMC(
-        0.005, # starting stepsize
-        0.0025, # minimum stepsize
-        0.02, # maximum stepsize
-        40, # number of stepsize options in stepsize adapter
-        2, # starting number of leapfrog steps
-        2, # minimum number of leapfrog steps
-        50, # maximum number of leapfrog steps
-        1, # stepsize between leapfrog steps in leapfrog step adapter
-        0.001, # hyper parameter stepsize
-        5, # hyper parameter number of leapfrog steps
-        40, # number of burnin epochs
-        20, # number of cores
-        2) # number of averaging steps for param adapters)
+        stepSizeStart=1e-3,#0.0004 # starting stepsize
+        stepSizeMin=1e-4, #0.0002 # minimum stepsize
+        stepSizeMax=1e-2, # maximum stepsize
+        stepSizeOptions=100, # number of stepsize options in stepsize adapter
+        leapfrogStart=1000, # starting number of leapfrog steps
+        leapfogMin=100, # minimum number of leapfrog steps
+        leapFrogMax=10000, # maximum number of leapfrog steps
+        leapfrogIncrement=10, # stepsize between leapfrog steps in leapfrog step adapter
+        hyperStepSize=0.001, # hyper parameter stepsize
+        hyperLeapfrog=100, # hyper parameter number of leapfrog steps
+        burnin=1000, # number of burnin epochs
+        averagingSteps=10) # number of averaging steps for param adapters)
+
 		
     neuralNet.train(
-        541, # epochs to train for
+        6001, # epochs to train for
         10, # increment between network saves
         likelihood,
         metricList=metricList,
+        adjustHypers=True,
         folderName="TrigRegression", # Name of folder for saved networks
         networksPerFile=50) # Number of networks saved per file
         
-    print("Time elapsed:", time.time() - startTime)
+    print("Total time elapsed (seconds):", time.time() - startTime)
 
 
     #Load predictor
