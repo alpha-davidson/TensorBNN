@@ -1,24 +1,24 @@
-from tensorBNN.activationFunctions import (Exp, Relu, Sigmoid, Tanh, Elu, Softmax,
-                                          Leaky_relu, Prelu, SquarePrelu)
-from tensorBNN.layer import DenseLayer
+from tensorBNN.activationFunctions import (Exp, Relu, Sigmoid, Tanh, Elu,
+                                           Softmax, Leaky_relu, Prelu,
+                                           SquarePrelu)
+from tensorBNN.layer import DenseLayer, GaussianDenseLayer
 from tensorBNN.likelihood import GaussianLikelihood
 
 from emcee.autocorr import integrated_time, function_1d
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 import math
 
 
 class predictor(object):
     def __init__(self, directoryPath, dtype, customLayerDict={},
-                 likelihood=GaussianLikelihood(sd = 0.1)):
+                 likelihood=GaussianLikelihood(sd=0.1)):
         """ The constructor here obtains the necesary information to make basic
         predictions, and also the basic likelihood function for future
         reweighting.
-        
+
         Arguments:
             * directoryPath: Path to folder containing saved networks
             * dtype: data type of network
@@ -26,12 +26,12 @@ class predictor(object):
             their names as keys
             * likelihood: Likelihood object used in training. If reweighting
             is not performed this does not matter.
-        
         """
-        self.layerDict = {"Exp": Exp, "relu": Relu, "sigmoid": Sigmoid, "tanh": Tanh,
-                          "elu": Elu, "softmax": Softmax,
+        self.layerDict = {"Exp": Exp, "relu": Relu, "sigmoid": Sigmoid,
+                          "tanh": Tanh, "elu": Elu, "softmax": Softmax,
                           "leakyrelu": Leaky_relu, "prelu": Prelu,
-                          "squareprelu": SquarePrelu, "dense": DenseLayer}
+                          "squareprelu": SquarePrelu, "dense": DenseLayer,
+                          "denseGaussian": GaussianDenseLayer}
         self.directoryPath = directoryPath
         self.layerDict.update(customLayerDict)
         self.dtype = dtype
@@ -52,14 +52,14 @@ class predictor(object):
         numFiles = int(summary[-2][1])
         numMatrices = int(summary[-2][2])
         numHypers = int(summary[-1][0])
-        
+
         numNetworks //= numFiles
 
         matrices = []
-        vectors=[]
+        vectors = []
         for x in range(numFiles*numNetworks):
             vectors.append([])
-        
+
         for n in range(numMatrices):
             if(len(summary[n]) == 2):
                 weightsSplitDims = (numNetworks *
@@ -79,19 +79,21 @@ class predictor(object):
                     dtype=np.float32,
                     ndmin=2)
                 for k in range(numNetworks):
-                    
+
                     netNumber = m * numNetworks + k
                     index1 = weightsSplitDims[1] * k
                     index2 = weightsSplitDims[1] * (k + 1)
                     index3 = weightsSplitDims[2]
                     weights0[netNumber, :, :] = weights[index1:index2, :index3]
-                    vectors[netNumber].append(tf.cast(weights[index1:index2, :index3], self.dtype).numpy().flatten())
+                    newVector = tf.cast(weights[index1:index2, :index3],
+                                        self.dtype).numpy().flatten()
+                    vectors[netNumber].append(newVector)
             matrices.append(tf.cast(weights0, self.dtype))
         for x in range(len(vectors)):
             vectors[x] = np.concatenate(vectors[x])
-        
-        hypers=[]
-        if(numHypers>0):
+
+        hypers = []
+        if(numHypers > 0):
             for m in range(numFiles):
                 weights = np.loadtxt(
                     self.directoryPath + "hypers" + str(m) + ".txt",
@@ -101,31 +103,31 @@ class predictor(object):
                     index1 = numHypers * k
                     index2 = numHypers * (k + 1)
                     hypers.append(weights[index1:index2])
-        
-        
-        
+
         numNetworks *= numFiles
 
         self.numNetworks = numNetworks
         self.numMatrices = numMatrices
         self.matrices = matrices
-        self.hypers=hypers
-        self.vectors=vectors
-        
+        self.hypers = hypers
+        self.vectors = vectors
+
     def loadArchitecture(self, architecture=None):
         self.layers = []
         if(architecture is None):
             with open(self.directoryPath + "architecture.txt", "r") as file:
                 for line in iter(file):
                     cleanedLine = line.replace("\n", "")
-                    self.layers.append(self.layerDict[cleanedLine](inputDims=1,
-                                                                   outputDims=1))
+                    cleanedLine = self.layerDict[cleanedLine](inputDims=1,
+                                                              outputDims=1)
+                    self.layers.append(cleanedLine)
         else:
             with open(architecture, "r") as file:
                 for line in iter(file):
                     cleanedLine = line.replace("\n", "")
-                    self.layers.append(self.layerDict[cleanedLine](inputDims=1,
-                                                                   outputDims=1))
+                    cleanedLine = self.layerDict[cleanedLine](inputDims=1,
+                                                              outputDims=1)
+                    self.layers.append(cleanedLine)
 
     def predict(self, inputMatrix, n=1):
         """Make predictions from an ensemble of neural networks.
@@ -151,31 +153,30 @@ class predictor(object):
             initialResults[m//n] = current.numpy()
 
         return(initialResults)
-    
+
     def trainProbs(self, trainX, trainY, n, likelihood):
         """ Calculate the negative log likelihoods for the training data.
-        
+
         Arguments:
             * trainX: training input data
             * trainY: training output data
             * n: Predict using every n networks
-        
         """
         weights = []
         if(likelihood is not None):
             hyperCountShape = np.array(self.likelihood.hypers).shape
             hyperCount = 1
             for x in hyperCountShape:
-              hyperCount*=x
-            likelihoodHypers = []
+                hyperCount *= x
+            likelihoodHyper = []
             for hyper in self.hypers:
-              likelihoodHypers.append([hyper[-hyperCount:]])
+                likelihoodHyper.append([hyper[-hyperCount:]])
             weights = self.likelihood.calcultateLogProb(tf.transpose(trainX),
-                                                    realVals=trainY,
-                                                    n=n,
-                                                    hypers = likelihoodHypers,
-                                                    predict = self.predict,
-                                                    dtype=self.dtype)
+                                                        realVals=trainY,
+                                                        n=n,
+                                                        hypers=likelihoodHyper,
+                                                        predict=self.predict,
+                                                        dtype=self.dtype)
         else:
             for m in range(0, self.numNetworks, n):
                 weights.append(tf.cast(0, self.dtype))
@@ -194,48 +195,51 @@ class predictor(object):
                     hyperList.append(self.hypers[m][hyperIndex+x])
                 hyperIndex += numHyperTensors
                 matrixIndex += numTensors
-                current -= tf.cast(layer.calculateHyperProbs(hyperList, tensorList), self.dtype).numpy()
+                current -= tf.cast(layer.calculateHyperProbs(hyperList,
+                                                             tensorList),
+                                   self.dtype).numpy()
             weights[m//n] = current
         self.weightsTrain = np.array(weights)
-   
-    def reweight(self, architecture, trainX=None, trainY=None, n=1, likelihood=None):
-        """ Calculate new weights for each network if they have the new 
+
+    def reweight(self, architecture, trainX=None, trainY=None, n=1,
+                 likelihood=None):
+        """ Calculate new weights for each network if they have the new
         hyper paramters described in architecture. The weights are calculated
         according to p(theta|priors2)/p(theta|priors1). The new priors can be
-        anything, but the layers must still accept the same size inputs and 
+        anything, but the layers must still accept the same size inputs and
         number of hyper paramters as the base networks.
-        
+
         Arguments:
             * trainX: training input data
             * trainY: training output data
             * architecture: new architecture file
             * n: Predict using every n networks
-        
+
         Returns:
             * weighting: Numpy array with new weights for the networks.
         """
-        
-        if(len(self.weightsTrain)==0):
+
+        if(len(self.weightsTrain) == 0):
             self.trainProbs(trainX, trainY, n, likelihood)
-        
+
         self.loadArchitecture(architecture=architecture)
-        
+
         weights = []
         if(likelihood is not None):
-            
+
             hyperCountShape = np.array(likelihood.hypers).shape
             hyperCount = 1
             for x in hyperCountShape:
-              hyperCount*=x
+                hyperCount *= x
             likelihoodHypers = []
             for hyper in self.hypers:
-              likelihoodHypers.append([hyper[-hyperCount:]])
+                likelihoodHypers.append([hyper[-hyperCount:]])
             weights = likelihood.calcultateLogProb(tf.transpose(trainX),
-                                                    realVals=trainY,
-                                                    n=n,
-                                                    hypers = likelihoodHypers,
-                                                    predict = self.predict,
-                                                    dtype=self.dtype)
+                                                   realVals=trainY,
+                                                   n=n,
+                                                   hypers=likelihoodHypers,
+                                                   predict=self.predict,
+                                                   dtype=self.dtype)
 
         else:
             for m in range(0, self.numNetworks, n):
@@ -256,53 +260,55 @@ class predictor(object):
                     hyperList.append(self.hypers[m][hyperIndex+x])
                 hyperIndex += numHyperTensors
                 matrixIndex += numTensors
-                current -= tf.cast(layer.calculateHyperProbs(hyperList, tensorList), self.dtype).numpy()
+                current -= tf.cast(layer.calculateHyperProbs(hyperList,
+                                                             tensorList),
+                                   self.dtype).numpy()
             weights[m//n] = current
         self.weights = np.array(weights)
         weighting = np.exp(self.weightsTrain-self.weights)
-        weighting/=np.sum(weighting)
-        
+        weighting = weighting/np.sum(weighting)
+
         self.loadArchitecture()
-        
+
         return(weighting)
 
     def autocorrelation(self, inputData, nMax):
         predictions = self.predict(inputData, n=1)
         output = np.squeeze(np.array(predictions)).T
-        
-        valFunc=0
-        accepted=0
-        
+
+        valFunc = 0
+        accepted = 0
+
         for x in range(len(output)):
             temp = (integrated_time(output[x], tol=5, quiet=True))
             if(not math.isnan(temp)):
                 valFunc += np.array((function_1d(output[x])))
-                accepted+=1
-        
-        valFunc=valFunc/accepted
-        if(nMax<len(valFunc)):
+                accepted += 1
+
+        valFunc = valFunc/accepted
+        if(nMax < len(valFunc)):
             valFunc = valFunc[:nMax]
-        
+
         return(valFunc)
-        
+
     def autoCorrelationLength(self, inputData, nMax):
         predictions = self.predict(inputData, n=1)
         output = np.squeeze(np.array(predictions)).T
-        
-        val=0
-        accepted=0
-        
+
+        val = 0
+        accepted = 0
+
         for x in range(len(output)):
             temp = (integrated_time(output[x], tol=5, quiet=True))
             if(not math.isnan(temp)):
                 val += temp
-                accepted+=1
-        
-        val=val/accepted
-        
-        if(val[0]>nMax):
+                accepted += 1
+
+        val = val/accepted
+
+        if(val[0] > nMax):
             print("Correlation time is greater than maximum accepted value.")
-        
+
         return(val[0])
 
     def extractParameters(self):
@@ -314,8 +320,8 @@ class predictor(object):
 
     def extractHyperParameters(self):
         """
-        Returns an array with all the hyper parameters. The first axis corresponds
-        to the network.
+        Returns an array with all the hyper parameters. The first axis
+        corresponds to the network.
         """
         return(np.array(self.hypers))
 
@@ -327,18 +333,19 @@ class predictor(object):
         parameterMeans = []
         parameterSds = []
         for matrix in self.matrices:
-          parameterMeans.append(np.mean(matrix, axis=0))
-          parameterSds.append(np.std(matrix, axis=0))
-      
+            parameterMeans.append(np.mean(matrix, axis=0))
+            parameterSds.append(np.std(matrix, axis=0))
+
         return(parameterMeans, parameterSds)
 
     def hyperStatistics(self):
         """
-        Returns two arrays, the first with the means of all the hyper parameters,
-         and the second with standard deviations of the hyper parameters.
+        Returns two arrays, the first with the means of all the hyper
+        parameters, and the second with standard deviations of the hyper
+        parameters.
         """
         hypers = np.array(self.hypers)
         hyperMeans = np.mean(hypers, axis=0)
         hyperSds = np.std(hypers, axis=0)
-      
+
         return(hyperMeans, hyperSds)
