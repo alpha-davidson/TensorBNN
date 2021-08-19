@@ -190,20 +190,22 @@ class network(object):
             for states in layer.hypers:
                 self.hyperStates.append(states)
 
-    def setupMCMC(self, stepSize, stepMin, stepMax, stepNum, leapfrog, leapMin,
-                  leapMax, leapStep, hyperStepSize, hyperLeapfrog, burnin,
-                  cores, averagingSteps=10, a=4, delta=0.1, strikes=5,
+    def setupMCMC(self, stepSizeStart=1e-3, stepSizeMin=1e-4, stepSizeMax=1e-2,
+                  stepSizeOptions=40, leapfrogStart=1000, leapfogMin=100,
+                  leapFrogMax=10000, leapfrogIncrement=1, hyperStepSize=1e-2,
+                  hyperLeapfrog=100, burnin=1000,
+                  cores=4, averagingSteps=10, a=4, delta=0.1, strikes=5,
                   randomSteps=10, dualAveraging=False):
         """Sets up the MCMC algorithms
         Arguments:
-            * stepSize: the starting step size for the weights and biases
-            * stepMin: the minimum step size
-            * stepMax: the maximum step size
-            * stepNum: the number of step sizes in grid
-            * leapfrog: number of leapfrog steps for weights and biases
-            * leapMin: the minimum number of leapfrog steps
+            * stepSizeStart: the starting step size for the weights and biases
+            * stepSizeMin: the minimum step size
+            * stepSizeMax: the maximum step size
+            * stepSizeOptions: the number of step sizes in grid
+            * leapfrogStart: number of leapfrog steps for weights and biases
+            * leapFrogMax: the minimum number of leapfrog steps
             * leapMax: the maximum number of leapfrog steps
-            * leapStep: the step in number of leapfrog for search grid
+            * leapfrogIncrement: the step in number of leapfrog for search grid
             * hyperStepSize: the starting step size for the hyper parameters
             * hyperLeapfrog: leapfrog steps for hyper parameters
             * cores: number of cores to use
@@ -216,25 +218,24 @@ class network(object):
         """
 
         # Adapt the step size and number of leapfrog steps
-        self.adapt = paramAdapter(
-            stepSize,
-            leapfrog,
-            stepMin,
-            stepMax,
-            stepNum,
-            leapMin,
-            leapMax,
-            leapStep,
-            averagingSteps,
-            burnin / averagingSteps,
-            a=a,
-            delta=delta,
-            cores=cores,
-            strikes=strikes,
-            randomSteps=randomSteps)
+        self.adapt = paramAdapter(stepSizeStart,
+                                  leapfrogStart,
+                                  stepSizeMin,
+                                  stepSizeMax,
+                                  stepSizeOptions,
+                                  leapfogMin,
+                                  leapFrogMax,
+                                  leapfrogIncrement,
+                                  averagingSteps,
+                                  burnin / averagingSteps,
+                                  a=a,
+                                  delta=delta,
+                                  cores=cores,
+                                  strikes=strikes,
+                                  randomSteps=randomSteps)
 
-        self.step_size = tf.cast(stepSize, self.dtype)
-        self.leapfrog = tf.cast(leapfrog, tf.int32)
+        self.step_size = tf.cast(stepSizeStart, self.dtype)
+        self.leapfrog = tf.cast(leapfrogStart, tf.int32)
         self.cores = cores
         self.burnin = burnin
         self.target = 0.95
@@ -252,7 +253,7 @@ class network(object):
         self.kappa2 = tf.cast(0.75, self.dtype)
         self.h2 = tf.cast([0], self.dtype)
         self.logEpsilonBar2 = tf.cast([0], self.dtype)
-        self.mu2 = tf.cast(tf.math.log(100*stepSize), self.dtype)
+        self.mu2 = tf.cast(tf.math.log(100*stepSizeStart), self.dtype)
 
         self.hyper_step_size = tf.Variable(tf.cast(np.array(hyperStepSize),
                                                    self.dtype))
