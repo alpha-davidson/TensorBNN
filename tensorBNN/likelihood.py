@@ -5,6 +5,7 @@ from tensorBNN.BNN_functions import multivariateLogProb
 
 tfd = tfp.distributions
 
+
 class Likelihood(object):
     def __init__(self, *argv, **kwargs):
         """
@@ -13,9 +14,9 @@ class Likelihood(object):
         calculated when the hyperparameters are being adjusted. This will
         likely be the case if it has hyper paramters.
         """
-        self.hypers=[]
-        self.mainProbsInHypers=False
-    
+        self.hypers = []
+        self.mainProbsInHypers = False
+
     def makeResponseLikelihood(self, *argv, **kwargs):
         """ This method will make a prediction and predict its probability
         given the likelihood funtion implemented. It will need at least the
@@ -24,52 +25,51 @@ class Likelihood(object):
             * argv: an undetermined number of tensors containg the weights
             and biases
             * realVals: the actual values for the predicted quantities
-            * predict: the function used to make a prediction from the 
+            * predict: the function used to make a prediction from the
             current neural net
             * dtype: the datatype of the network
         Returns:
             * result: the log probabilities of the real vals given the
-            predicted values 
+            predicted values
         """
-        self.hypers=[]
-        
+        self.hypers = []
+
     def calculateLogProb(self, *argv, **kwargs):
         """ This is a version of makeResponseLikelihood designed to deal with
         multiple sets of hyper paramters. It is used for reweighting in the
         predictor object, not during training as makeResponseLikelihood is.
-        It also requires at least the following inputs and outputs:    
+        It also requires at least the following inputs and outputs:
         Arguments:
             * argv: an undetermined number of tensors containg the weights
             and biases
             * realVals: the actual values for the predicted quantities
             * hypers: A list containing all the hyper paramters
-            * predict: the function used to make a prediction from the 
+            * predict: the function used to make a prediction from the
             current neural net
             * dtype: the datatype of the network
         Returns:
             * result: the log probabilities of the real vals given the
-            predicted values 
-        
+            predicted values
         """
         pass
-    
+
     def display(self, hypers):
         """An optional method which can be used to display relavent information
         during the evaluation phase of a network.
         """
         pass
-    
+
 
 class GaussianLikelihood(Likelihood):
-    
+
     def __init__(self, *argv, **kwargs):
-        self.hypers=[kwargs["sd"]]
+        self.hypers = [[kwargs["sd"]**0.5]]
         self.mainProbsInHypers = True
-    
+
     def makeResponseLikelihood(self, *argv, **kwargs):
         """Make a prediction and predict its probability from a multivariate
         normal distribution
-    
+
         Arguments:
             * argv: an undetermined number of tensors containg the weights
             and biases
@@ -77,18 +77,16 @@ class GaussianLikelihood(Likelihood):
             * sd: standard deviation for output distribution, uses
             current hyper parameter value if nothing is given
             * hyperStates: A list containing all the hyper paramters
-            * predict: the function used to make a prediction from the 
+            * predict: the function used to make a prediction from the
             current neural net
             * dtype: the datatype of the network
         Returns:
             * result: the log probabilities of the real vals given the
             predicted values
         """
-    
-        if(kwargs["sd"] is None):
-            sd = kwargs["hyperStates"][-1]
-        else:
-            sd = kwargs["sd"]
+
+        sd = kwargs["hyperStates"][-1]**2
+
         current = kwargs["predict"](True, argv[0])
         current = tf.transpose(current)
         sigma = tf.ones_like(current) * sd
@@ -96,17 +94,17 @@ class GaussianLikelihood(Likelihood):
         result = multivariateLogProb(sigma, current, realVals, kwargs["dtype"])
 
         return(result)
-    
+
     def calcultateLogProb(self, *argv, **kwargs):
         """Make a prediction and predict its probability from a multivariate
         normal distribution
-    
+
         rguments:
             * argv: an undetermined number of tensors containg the weights
             and biases
             * realVals: the actual values for the predicted quantities
             * hypers: A list containing all the hyper paramters
-            * predict: the function used to make a prediction from the 
+            * predict: the function used to make a prediction from the
             current neural net
             * dtype: the datatype of the network
             * n: Use every n networks
@@ -114,41 +112,110 @@ class GaussianLikelihood(Likelihood):
             * result: the log probabilities of the real vals given the
             predicted values
         """
-        sd = []
-        for x in range(len(kwargs["hypers"])):
-            sd.append(kwargs["hypers"][x][-1])
+        if(kwargs["sd"] is None):
+            sd = kwargs["hyperStates"][-1]
+        else:
+            sd = kwargs["sd"]
         current = kwargs["predict"](argv[0], n=kwargs["n"])
         for x in range(len(current)):
             current[x] = tf.transpose(current[x])
-        
         realVals = tf.reshape(kwargs["realVals"], current[0].shape)
         result = []
         for x in range(len(current)):
-            
-            result.append(multivariateLogProb(tf.ones_like(current[0]) * sd[x],
+
+            result.append(multivariateLogProb(tf.ones_like(current[0]) * sd,
                                               current[x], realVals,
                                               kwargs["dtype"]))
-    
         return(result)
-    
-    def display(self, hypers):
-        print("Loss Standard Deviation: ", hypers[-1].numpy())
-        
 
-class BernoulliLikelihood(Likelihood):
+    def display(self, hypers):
+        print("Loss Standard Deviation: ", hypers[-1].numpy()**2)
+        pass
+
+
+class FixedGaussianLikelihood(Likelihood):
+
     def __init__(self, *argv, **kwargs):
-        self.hypers=[]
-        self.mainProbsInHypers=False
-    
-    def makeResponseLikelihood(self, *argv,  **kwargs):
-        """Make a prediction and predict its probability from a Bernoulli
-           normal distribution
-    
+        self.hypers = []
+        self.sd = kwargs["sd"]
+        self.mainProbsInHypers = False
+
+    def makeResponseLikelihood(self, *argv, **kwargs):
+        """Make a prediction and predict its probability from a multivariate
+        normal distribution
+
         Arguments:
             * argv: an undetermined number of tensors containg the weights
             and biases
             * realVals: the actual values for the predicted quantities
-            * predict: the function used to make a prediction from the 
+            * sd: standard deviation for output distribution, uses
+            current hyper parameter value if nothing is given
+            * hyperStates: A list containing all the hyper paramters
+            * predict: the function used to make a prediction from the
+            current neural net
+            * dtype: the datatype of the network
+        Returns:
+            * result: the log probabilities of the real vals given the
+            predicted values
+        """
+
+        sd = tf.cast(self.sd, kwargs["dtype"])
+        current = kwargs["predict"](True, argv[0])
+        current = tf.transpose(current)
+        sigma = tf.ones_like(current) * sd
+        realVals = tf.reshape(kwargs["realVals"], current.shape)
+        result = multivariateLogProb(sigma, current, realVals, kwargs["dtype"])
+
+        return(result)
+
+    def calcultateLogProb(self, *argv, **kwargs):
+        """Make a prediction and predict its probability from a multivariate
+        normal distribution
+
+        rguments:
+            * argv: an undetermined number of tensors containg the weights
+            and biases
+            * realVals: the actual values for the predicted quantities
+            * hypers: A list containing all the hyper paramters
+            * predict: the function used to make a prediction from the
+            current neural net
+            * dtype: the datatype of the network
+            * n: Use every n networks
+        Returns:
+            * result: the log probabilities of the real vals given the
+            predicted values
+        """
+        current = kwargs["predict"](argv[0], n=kwargs["n"])
+        for x in range(len(current)):
+            current[x] = tf.transpose(current[x])
+        realVals = tf.reshape(kwargs["realVals"], current[0].shape)
+        result = []
+        for x in range(len(current)):
+            temp = multivariateLogProb(tf.ones_like(current[0]) * self.sd,
+                                       current[x], realVals,
+                                       kwargs["dtype"])
+            result.append(temp)
+
+        return(result)
+
+    def display(self, hypers):
+        pass
+
+
+class BernoulliLikelihood(Likelihood):
+    def __init__(self, *argv, **kwargs):
+        self.hypers = []
+        self.mainProbsInHypers = False
+
+    def makeResponseLikelihood(self, *argv,  **kwargs):
+        """Make a prediction and predict its probability from a Bernoulli
+           normal distribution
+
+        Arguments:
+            * argv: an undetermined number of tensors containg the weights
+            and biases
+            * realVals: the actual values for the predicted quantities
+            * predict: the function used to make a prediction from the
             current neural net
             * dtype: the datatype of the network
         Returns:
@@ -162,15 +229,15 @@ class BernoulliLikelihood(Likelihood):
                 1e-8,
                 1 - 1e-7),
             kwargs["dtype"])
-        
+
         # Prediction distribution
         dist = tfd.Bernoulli(
             probs=current)
         result = dist.log_prob(tf.transpose(kwargs["realVals"]))
         return(result)
-        
+
     def calcultateLogProb(self, *argv, **kwargs):
-        result=[]
+        result = []
         for x in range(len(kwargs["hypers"])):
-            result.append(tf.cast(0,kwargs["dtype"]))
+            result.append(tf.cast(0, kwargs["dtype"]))
         return(result)
