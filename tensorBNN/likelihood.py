@@ -129,7 +129,7 @@ class GaussianLikelihood(Likelihood):
         return(result)
 
     def display(self, hypers):
-        print("Loss Standard Deviation: ", hypers[-1].numpy()**2)
+        print("Loss Standard Deviation: ", hypers[-1].numpy()[0]**2)
         pass
 
 
