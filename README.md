@@ -207,3 +207,6 @@ weights = network.reweight(
                     # New architecture file
 ```
 
+## Acknowledgements
+
+This work was supported in part by the Davidson Research Initiative and the U.S. Department of Energy under Award No. DE-SC0010102.
